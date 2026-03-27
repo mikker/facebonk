@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Facebonk Approach</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f4efe6;
+        --panel: #fffaf2;
+        --ink: #1f2937;
+        --muted: #5b6472;
+        --edge: #d9ccb8;
+        --accent: #9a3412;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia,
+          serif;
+        background: radial-gradient(circle at top, #fffaf2, var(--bg) 68%);
+        color: var(--ink);
+      }
+      main {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 48px 24px 64px;
+      }
+      h1,
+      h2 {
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        margin: 0 0 12px;
+      }
+      h1 {
+        font-size: 2.5rem;
+      }
+      h2 {
+        font-size: 1.35rem;
+        margin-top: 32px;
+      }
+      p,
+      li,
+      code {
+        font-size: 1rem;
+        line-height: 1.65;
+      }
+      p,
+      ul,
+      ol,
+      pre {
+        margin: 0 0 16px;
+      }
+      .lede {
+        color: var(--muted);
+        font-size: 1.08rem;
+      }
+      .panel {
+        background: color-mix(in srgb, var(--panel) 90%, white);
+        border: 1px solid var(--edge);
+        border-radius: 18px;
+        padding: 22px 22px 8px;
+        box-shadow: 0 18px 40px rgba(64, 45, 18, 0.08);
+      }
+      .diagram {
+        margin: 20px 0 24px;
+        padding: 18px;
+        border: 1px solid var(--edge);
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.7);
+      }
+      .diagram img {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+      code {
+        background: rgba(154, 52, 18, 0.08);
+        padding: 0.15em 0.35em;
+        border-radius: 6px;
+      }
+      pre {
+        overflow: auto;
+        padding: 14px 16px;
+        border-radius: 12px;
+        border: 1px solid var(--edge);
+        background: #fff;
+      }
+      strong {
+        color: var(--accent);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="panel">
+        <h1>Facebonk Approach</h1>
+        <p class="lede">
+          Facebonk is a small identity steward app for a Hyperstack/Autobonk world. It owns
+          identity creation and profile editing. Other apps link to an existing identity instead of
+          creating their own.
+        </p>
+
+        <h2>Core idea</h2>
+        <p>
+          One identity is one shared Autobonk context. One profile singleton holds shared display
+          data. One device is one writer key. A linked device is just another writer granted the
+          <code>owner</code> role in that same identity.
+        </p>
+        <div class="diagram">
+          <img src="./assets/facebonk-runtime.svg" alt="Facebonk runtime diagram" />
+        </div>
+
+        <h2>Runtime</h2>
+        <ul>
+          <li>CLI-first and Pear/Bare-compatible.</li>
+          <li>Default storage follows Pear's pattern.</li>
+          <li>Dev default is <code>&lt;tmpdir&gt;/pear/facebonk</code>.</li>
+          <li>Production default is the OS app-data dir.</li>
+          <li><code>Pear.storage</code> or <code>Pear.config.storage</code> wins when available.</li>
+          <li><code>--storage</code> is the explicit override for multi-instance local testing.</li>
+        </ul>
+
+        <h2>Commands</h2>
+        <p>
+          <code>init</code>, <code>serve</code>, <code>whoami</code>, <code>profile show</code>,
+          <code>profile set</code>, <code>link create</code>, <code>link join</code>,
+          <code>devices list</code>, and <code>devices revoke</code>.
+        </p>
+
+        <h2>Linking flow</h2>
+        <ol>
+          <li>Primary device creates an invite.</li>
+          <li>Primary device stays online with <code>serve</code>.</li>
+          <li>Second device joins with the invite.</li>
+          <li>Autobonk pairing adds the second writer and grants <code>owner</code>.</li>
+          <li>Both devices now read and write the same shared profile.</li>
+        </ol>
+        <div class="diagram">
+          <img src="./assets/facebonk-linking.svg" alt="Facebonk linking diagram" />
+        </div>
+
+        <h2>Current limitation</h2>
+        <p>
+          One local data directory can only be opened by one process at a time. That does not mean
+          one identity can only be used by one app at a time. It only means each running instance
+          needs its own local storage path.
+        </p>
+        <pre><code>node cli.js --storage /tmp/pear/facebonk-a serve
+node cli.js --storage /tmp/pear/facebonk-b link join &lt;invite&gt;</code></pre>
+      </div>
+    </main>
+  </body>
+</html>
