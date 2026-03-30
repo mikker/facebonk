@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "schema": [
     {
       "name": "writer",
@@ -231,6 +231,18 @@
           "required": true,
           "type": "uint",
           "version": 1
+        },
+        {
+          "name": "avatar",
+          "required": false,
+          "type": "@facebonk/blob",
+          "version": 2
+        },
+        {
+          "name": "avatarMimeType",
+          "required": false,
+          "type": "string",
+          "version": 2
         }
       ]
     },
@@ -269,6 +281,62 @@
           "required": true,
           "type": "uint",
           "version": 1
+        },
+        {
+          "name": "avatar",
+          "required": false,
+          "type": "@facebonk/blob",
+          "version": 2
+        },
+        {
+          "name": "avatarMimeType",
+          "required": false,
+          "type": "string",
+          "version": 2
+        },
+        {
+          "name": "clearAvatar",
+          "required": false,
+          "type": "bool",
+          "version": 2
+        }
+      ]
+    },
+    {
+      "name": "blob",
+      "namespace": "facebonk",
+      "compact": true,
+      "flagsPosition": -1,
+      "fields": [
+        {
+          "name": "key",
+          "required": true,
+          "type": "fixed32",
+          "version": 2
+        },
+        {
+          "name": "blockOffset",
+          "required": true,
+          "type": "uint",
+          "version": 2
+        },
+        {
+          "name": "blockLength",
+          "required": true,
+          "type": "uint",
+          "version": 2
+        },
+        {
+          "name": "byteOffset",
+          "required": true,
+          "type": "uint",
+          "version": 2
+        },
+        {
+          "name": "byteLength",
+          "required": true,
+          "type": "uint",
+          "version": 2
         }
       ]
     }

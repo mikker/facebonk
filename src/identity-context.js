@@ -1,7 +1,9 @@
 import { Context } from 'autobonk'
+import Hyperblobs from 'hyperblobs'
 
 const PROFILE_ID = 'profile'
 const OWNER_ROLE = 'owner'
+const MAX_AVATAR_BYTES = 5 * 1024 * 1024
 
 function normalizeOptionalText(value, maxLength) {
   if (value === undefined) return undefined
@@ -16,14 +18,81 @@ function bufferToHex(buffer) {
   return Buffer.from(buffer).toString('hex')
 }
 
+function unwrapRecord(node) {
+  return node?.value ?? node ?? null
+}
+
+function normalizeOptionalMimeType(value) {
+  const mimeType = normalizeOptionalText(value, 120)
+  if (mimeType === undefined || mimeType === null) return mimeType
+  return mimeType.toLowerCase()
+}
+
+function normalizeBlobRef(value) {
+  if (value === undefined) return undefined
+  if (value === null) return null
+  if (!value || typeof value !== 'object') {
+    throw new TypeError('Avatar blob ref must be an object')
+  }
+
+  const key = normalizeFixed32Buffer(value.key)
+  const blockOffset = normalizeUint(value.blockOffset, 'blockOffset')
+  const blockLength = normalizeUint(value.blockLength, 'blockLength')
+  const byteOffset = normalizeUint(value.byteOffset, 'byteOffset')
+  const byteLength = normalizeUint(value.byteLength, 'byteLength')
+
+  return { key, blockOffset, blockLength, byteOffset, byteLength }
+}
+
+function normalizeFixed32Buffer(value) {
+  const buffer = Buffer.isBuffer(value) ? value : value instanceof Uint8Array ? Buffer.from(value) : null
+  if (!buffer || buffer.length !== 32) {
+    throw new TypeError('Blob key must be a 32-byte buffer')
+  }
+  return buffer
+}
+
+function normalizeUint(value, fieldName) {
+  if (!Number.isInteger(value) || value < 0) {
+    throw new TypeError(`${fieldName} must be a non-negative integer`)
+  }
+  return value
+}
+
+async function readStreamFully(stream) {
+  const chunks = []
+  for await (const chunk of stream) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+  }
+  return Buffer.concat(chunks)
+}
+
+function copyProfileTextFields(profile, patch) {
+  if (profile?.displayName) {
+    patch.displayName = profile.displayName
+  }
+
+  if (profile?.bio) {
+    patch.bio = profile.bio
+  }
+
+  return patch
+}
+
 export class IdentityContext extends Context {
+  constructor(store, opts = {}) {
+    super(store, opts)
+    this.blobs = null
+    this.blobsCore = null
+  }
+
   setupRoutes() {
     this.router.add('@facebonk/profile-set', async (data = {}, context) => {
       await this.requireIdentityOwner(context.writerKey)
 
-      const existing = await context.view.get('@facebonk/profiles', {
+      const existing = unwrapRecord(await context.view.get('@facebonk/profiles', {
         id: PROFILE_ID
-      })
+      }))
 
       const record = {
         id: PROFILE_ID,
@@ -44,6 +113,22 @@ export class IdentityContext extends Context {
             ? existing?.bio ?? null
             : normalizeOptionalText(data.bio, 600)
 
+      const nextAvatar =
+        data.clearAvatar === true
+          ? null
+          : data.avatar === undefined
+            ? existing?.avatar ?? null
+            : normalizeBlobRef(data.avatar)
+
+      const nextAvatarMimeType =
+        data.clearAvatar === true
+          ? null
+          : data.avatar !== undefined
+            ? normalizeOptionalMimeType(data.avatarMimeType)
+            : data.avatarMimeType === undefined
+              ? existing?.avatarMimeType ?? null
+              : normalizeOptionalMimeType(data.avatarMimeType)
+
       if (nextDisplayName) {
         record.displayName = nextDisplayName
       }
@@ -52,8 +137,47 @@ export class IdentityContext extends Context {
         record.bio = nextBio
       }
 
+      if (nextAvatar) {
+        record.avatar = nextAvatar
+      }
+
+      if (nextAvatarMimeType) {
+        record.avatarMimeType = nextAvatarMimeType
+      }
+
       await context.view.insert('@facebonk/profiles', record)
     })
+  }
+
+  async setupResources() {
+    await this.setupBlobStore()
+  }
+
+  async teardownResources() {
+    if (!this.blobsCore) return
+
+    try {
+      await this.blobs.close()
+    } catch {}
+
+    try {
+      await this.blobsCore.close()
+    } catch {}
+
+    this.blobs = null
+    this.blobsCore = null
+  }
+
+  async setupBlobStore() {
+    if (this.blobs) return
+
+    this.blobsCore = this.store.get({
+      name: 'blobs',
+      encryptionKey: this.encryptionKey
+    })
+    await this.blobsCore.ready()
+    this.blobs = new Hyperblobs(this.blobsCore)
+    await this.blobs.ready()
   }
 
   async hasIdentityOwner(subjectKey) {
@@ -114,8 +238,114 @@ export class IdentityContext extends Context {
       else payload.bio = value
     }
 
+    if (Object.prototype.hasOwnProperty.call(patch, 'avatar')) {
+      const value = normalizeBlobRef(patch.avatar)
+      if (value === null) payload.clearAvatar = true
+      else payload.avatar = value
+    }
+
+    if (Object.prototype.hasOwnProperty.call(patch, 'avatarMimeType')) {
+      const value = normalizeOptionalMimeType(patch.avatarMimeType)
+      if (value !== null && value !== undefined) {
+        payload.avatarMimeType = value
+      }
+    }
+
     await this.base.append(this.schema.dispatch.encode('@facebonk/profile-set', payload))
     return await this.getProfile()
+  }
+
+  async setAvatar(data, options = {}) {
+    await this.requireIdentityOwner(this.writerKey)
+
+    const buffer = Buffer.isBuffer(data) ? data : data instanceof Uint8Array ? Buffer.from(data) : null
+    if (!buffer || buffer.length === 0) {
+      throw new Error('Avatar bytes are required')
+    }
+    if (buffer.length > MAX_AVATAR_BYTES) {
+      throw new Error(`Avatar must be ${MAX_AVATAR_BYTES} bytes or smaller`)
+    }
+
+    await this.setupBlobStore()
+
+    const pointer = await this.blobs.put(buffer)
+    const current = await this.getProfile()
+
+    return await this.setProfile(copyProfileTextFields(current, {
+      updatedAt: typeof options.updatedAt === 'number' ? options.updatedAt : Date.now(),
+      avatar: {
+        key: Buffer.from(this.blobs.key),
+        blockOffset: pointer.blockOffset,
+        blockLength: pointer.blockLength,
+        byteOffset: pointer.byteOffset,
+        byteLength: pointer.byteLength
+      },
+      avatarMimeType: normalizeOptionalMimeType(options.mimeType)
+    }))
+  }
+
+  async clearAvatar(options = {}) {
+    const current = await this.getProfile()
+
+    return await this.setProfile(copyProfileTextFields(current, {
+      updatedAt: typeof options.updatedAt === 'number' ? options.updatedAt : Date.now(),
+      avatar: null
+    }))
+  }
+
+  async getAvatar() {
+    const profile = await this.getProfile()
+    if (!profile?.avatar) return null
+
+    const { blobs, release } = await this.resolveBlobStore(profile.avatar)
+
+    try {
+      const stream = blobs.createReadStream(profile.avatar, { wait: true })
+      const data = await readStreamFully(stream)
+
+      return {
+        data,
+        mimeType: profile.avatarMimeType ?? null,
+        byteLength: data.length,
+        avatar: profile.avatar
+      }
+    } finally {
+      await release()
+    }
+  }
+
+  async resolveBlobStore(pointer) {
+    await this.setupBlobStore()
+
+    const targetKey = Buffer.from(pointer.key)
+    if (Buffer.from(this.blobs.key).equals(targetKey)) {
+      return {
+        blobs: this.blobs,
+        release: async () => {}
+      }
+    }
+
+    const core = this.store.get({
+      key: targetKey,
+      encryptionKey: this.encryptionKey
+    })
+    await core.ready()
+
+    const blobs = new Hyperblobs(core)
+    await blobs.ready()
+
+    return {
+      blobs,
+      release: async () => {
+        try {
+          await blobs.close()
+        } catch {}
+
+        try {
+          await core.close()
+        } catch {}
+      }
+    }
   }
 
   async listDevices() {

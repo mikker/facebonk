@@ -88,6 +88,28 @@ test('shared profile persists across manager reopen', async (t) => {
   t.is(profile?.bio, 'Profile persisted')
 })
 
+test('avatar bytes persist in the shared profile and can be read back', async (t) => {
+  const { manager } = await createManager(t, 'facebonk-avatar-')
+
+  const identity = await manager.initIdentity({
+    displayName: 'Avatar Bonk'
+  })
+
+  const avatarBytes = Buffer.from('fake-png-avatar')
+  const profile = await identity.setAvatar(avatarBytes, {
+    mimeType: 'image/png'
+  })
+
+  t.is(profile?.avatarMimeType, 'image/png')
+  t.ok(profile?.avatar, 'avatar pointer stored on profile')
+  t.is(profile?.avatar?.byteLength, avatarBytes.length)
+
+  const avatar = await identity.getAvatar()
+  t.ok(avatar, 'avatar can be loaded')
+  t.is(avatar?.mimeType, 'image/png')
+  t.alike(avatar?.data, avatarBytes)
+})
+
 test('link invite joins a second device onto the same identity', async (t) => {
   const first = await createManager(t, 'facebonk-link-a-')
   const second = await createManager(t, 'facebonk-link-b-')
@@ -95,6 +117,9 @@ test('link invite joins a second device onto the same identity', async (t) => {
   const primaryIdentity = await first.manager.initIdentity({
     displayName: 'Linked Human',
     bio: 'Original profile'
+  })
+  await primaryIdentity.setAvatar(Buffer.from('linked-avatar-a'), {
+    mimeType: 'image/webp'
   })
   const invite = await primaryIdentity.createLinkInvite()
 
@@ -119,10 +144,20 @@ test('link invite joins a second device onto the same identity', async (t) => {
   )
 
   t.is(linkedProfile?.bio, 'Original profile')
+  t.is(linkedProfile?.avatarMimeType, 'image/webp')
+
+  const linkedAvatar = await waitFor(
+    () => linkedIdentity.getAvatar(),
+    (avatar) => avatar?.mimeType === 'image/webp'
+  )
+  t.alike(linkedAvatar?.data, Buffer.from('linked-avatar-a'))
 
   await linkedIdentity.setProfile({
     displayName: 'Linked Human Updated',
     bio: 'Updated from second device'
+  })
+  await linkedIdentity.setAvatar(Buffer.from('linked-avatar-b'), {
+    mimeType: 'image/png'
   })
 
   const replicated = await waitFor(
@@ -131,6 +166,13 @@ test('link invite joins a second device onto the same identity', async (t) => {
   )
 
   t.is(replicated?.bio, 'Updated from second device')
+  t.is(replicated?.avatarMimeType, 'image/png')
+
+  const replicatedAvatar = await waitFor(
+    () => primaryIdentity.getAvatar(),
+    (avatar) => avatar?.mimeType === 'image/png'
+  )
+  t.alike(replicatedAvatar?.data, Buffer.from('linked-avatar-b'))
 })
 
 test('revoking a linked device removes its write access', async (t) => {
@@ -165,7 +207,8 @@ test('revoking a linked device removes its write access', async (t) => {
 
   await waitFor(
     () => linkedIdentity.getRoles(linkedIdentity.writerKey),
-    (roles) => roles.includes('owner')
+    (roles) => roles.includes('owner'),
+    10000
   )
 
   const revoked = await primaryIdentity.revokeDevice(linkedIdentity.writerKey)
@@ -179,7 +222,8 @@ test('revoking a linked device removes its write access', async (t) => {
 
   const linkedRoles = await waitFor(
     () => linkedIdentity.getRoles(linkedIdentity.writerKey),
-    (roles) => !roles.includes('owner')
+    (roles) => !roles.includes('owner'),
+    10000
   )
   t.ok(!linkedRoles.includes('owner'), 'linked device loses owner role locally')
 

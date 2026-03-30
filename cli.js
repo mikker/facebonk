@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import { mkdir } from 'fs/promises'
-import { isAbsolute, resolve } from 'path'
+import { mkdir, readFile } from 'fs/promises'
+import { extname, isAbsolute, resolve } from 'path'
 import process from 'process'
 import { IdentityManager } from './src/index.js'
 import { defaultStorageDir } from './src/storage-path.js'
@@ -14,7 +14,7 @@ Commands:
   serve
   whoami
   profile show
-  profile set [--name NAME] [--bio BIO]
+  profile set [--name NAME] [--bio BIO] [--avatar PATH] [--clear-avatar]
   link create [--expires-ms N]
   link join <invite>
   devices list
@@ -57,7 +57,8 @@ function isUsageError(error) {
     error.message.startsWith('Unknown command:') ||
     error.message.includes('requires a value') ||
     error.message.includes('requires an invite string') ||
-    error.message.includes('requires a writer key')
+    error.message.includes('requires a writer key') ||
+    error.message.includes('profile set --')
   )
 }
 
@@ -84,6 +85,14 @@ function formatProfile(profile) {
     `bio: ${profile.bio ?? ''}`,
     `updatedAt: ${profile.updatedAt ?? ''}`
   ]
+
+  if (profile.avatar) {
+    lines.push(`avatarMimeType: ${profile.avatarMimeType ?? ''}`)
+    lines.push(`avatarBlobKey: ${Buffer.from(profile.avatar.key).toString('hex')}`)
+    lines.push(`avatarBytes: ${profile.avatar.byteLength}`)
+  } else {
+    lines.push('avatar: ')
+  }
 
   return lines.join('\n')
 }
@@ -121,6 +130,19 @@ async function promptForProfile() {
   } finally {
     rl.close()
   }
+}
+
+function inferMimeType(filePath) {
+  const extension = extname(filePath).toLowerCase()
+
+  if (extension === '.png') return 'image/png'
+  if (extension === '.jpg' || extension === '.jpeg') return 'image/jpeg'
+  if (extension === '.webp') return 'image/webp'
+  if (extension === '.gif') return 'image/gif'
+  if (extension === '.avif') return 'image/avif'
+  if (extension === '.svg') return 'image/svg+xml'
+
+  return null
 }
 
 async function interactive(manager) {
@@ -242,26 +264,62 @@ async function main() {
     if (command === 'profile' && subcommand === 'set') {
       let displayName
       let bio
+      let avatarPath
+      let clearAvatar = false
 
       for (let i = 0; i < rest.length; i++) {
         if (rest[i] === '--name') {
           displayName = rest[++i]
+          if (displayName === undefined) {
+            throw new Error('profile set --name requires a value')
+          }
           continue
         }
 
         if (rest[i] === '--bio') {
           bio = rest[++i]
+          if (bio === undefined) {
+            throw new Error('profile set --bio requires a value')
+          }
+          continue
+        }
+
+        if (rest[i] === '--avatar') {
+          avatarPath = rest[++i]
+          if (avatarPath === undefined) {
+            throw new Error('profile set --avatar requires a value')
+          }
+          continue
+        }
+
+        if (rest[i] === '--clear-avatar') {
+          clearAvatar = true
         }
       }
 
-      if (displayName === undefined && bio === undefined) {
+      if (displayName === undefined && bio === undefined && avatarPath === undefined && !clearAvatar) {
         const prompted = await promptForProfile()
         displayName = prompted.displayName
         bio = prompted.bio
       }
 
       const identity = await manager.initIdentity()
-      const profile = await identity.setProfile({ displayName, bio })
+      let profile = await identity.getProfile()
+
+      if (displayName !== undefined || bio !== undefined) {
+        profile = await identity.setProfile({ displayName, bio })
+      }
+
+      if (avatarPath !== undefined) {
+        const resolvedPath = isAbsolute(avatarPath) ? avatarPath : resolve(process.cwd(), avatarPath)
+        const bytes = await readFile(resolvedPath)
+        profile = await identity.setAvatar(bytes, {
+          mimeType: inferMimeType(resolvedPath)
+        })
+      } else if (clearAvatar) {
+        profile = await identity.clearAvatar()
+      }
+
       console.log(formatProfile(profile))
       return
     }

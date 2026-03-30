@@ -36,6 +36,12 @@ Set a shared profile:
 node cli.js profile set --name "Mikker" --bio "Linked from Facebonk"
 ```
 
+Set or replace the shared avatar:
+
+```sh
+node cli.js profile set --avatar ./avatar.png
+```
+
 Show the active identity:
 
 ```sh
@@ -84,4 +90,4 @@ One local data dir can only be opened by one process at a time. That is a local 
 
 - CLI-first for now.
 - Pear/Bare-compatible storage defaults.
-- Shared profile is intentionally small in this POC: `displayName`, `bio`, `updatedAt`.
+- Shared profile is intentionally small in this POC: `displayName`, `bio`, blob-backed `avatar`, and `updatedAt`.

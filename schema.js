@@ -15,13 +15,27 @@ extendSchema(schema)
 const facebonk = schema.namespace('facebonk')
 
 facebonk.register({
+  name: 'blob',
+  compact: true,
+  fields: [
+    { name: 'key', type: 'fixed32', required: true },
+    { name: 'blockOffset', type: 'uint', required: true },
+    { name: 'blockLength', type: 'uint', required: true },
+    { name: 'byteOffset', type: 'uint', required: true },
+    { name: 'byteLength', type: 'uint', required: true }
+  ]
+})
+
+facebonk.register({
   name: 'profile',
   compact: false,
   fields: [
     { name: 'id', type: 'string', required: true },
     { name: 'displayName', type: 'string', required: false },
     { name: 'bio', type: 'string', required: false },
-    { name: 'updatedAt', type: 'uint', required: true }
+    { name: 'updatedAt', type: 'uint', required: true },
+    { name: 'avatar', type: '@facebonk/blob', required: false },
+    { name: 'avatarMimeType', type: 'string', required: false }
   ]
 })
 
@@ -33,7 +47,10 @@ facebonk.register({
     { name: 'bio', type: 'string', required: false },
     { name: 'clearDisplayName', type: 'bool', required: false },
     { name: 'clearBio', type: 'bool', required: false },
-    { name: 'updatedAt', type: 'uint', required: true }
+    { name: 'updatedAt', type: 'uint', required: true },
+    { name: 'avatar', type: '@facebonk/blob', required: false },
+    { name: 'avatarMimeType', type: 'string', required: false },
+    { name: 'clearAvatar', type: 'bool', required: false }
   ]
 })
 
