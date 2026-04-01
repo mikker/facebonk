@@ -1,6 +1,11 @@
 import { rm } from 'fs/promises'
 import test from 'brittle'
-import { IdentityContext, IdentityManager } from '../src/index.js'
+import {
+  IdentityContext,
+  IdentityManager,
+  profileSummaryFromCard,
+  verifyProfileCard
+} from '../core/index.js'
 import { createTempDir } from './helpers/temp-dir.js'
 
 async function createManager(t, prefix) {
@@ -236,4 +241,25 @@ test('revoking a linked device removes its write access', async (t) => {
 
   const profile = await primaryIdentity.getProfile()
   t.is(profile?.displayName, 'Revoker', 'linked device can no longer overwrite profile')
+})
+
+test('shareProfile returns a signed profile token with the current profile payload', async (t) => {
+  const { manager } = await createManager(t, 'facebonk-share-')
+
+  const identity = await manager.initIdentity({
+    displayName: 'Sharer',
+    bio: 'Signed profile export'
+  })
+  const avatarBytes = Buffer.from('share-avatar')
+  await identity.setAvatar(avatarBytes, { mimeType: 'image/png' })
+
+  const token = await manager.shareProfile()
+  const card = await verifyProfileCard(token)
+  const summary = profileSummaryFromCard(card)
+
+  t.ok(token.startsWith('facebonk-profile:'), 'token uses Facebonk share prefix')
+  t.is(summary.profile.displayName, 'Sharer')
+  t.is(summary.profile.bio, 'Signed profile export')
+  t.is(summary.profile.avatarMimeType, 'image/png')
+  t.ok(summary.profile.avatarDataUrl?.startsWith('data:image/png;base64,'), 'avatar is embedded')
 })

@@ -1,0 +1,15 @@
+flowchart TB
+  CLI["CLI handler<br/>cli/"]
+  WEB["Web handler<br/>web/"]
+  CORE["Facebonk core<br/>core/"]
+  MANAGER["IdentityManager"]
+  CONTEXT["IdentityContext"]
+  PROFILE["Shared profile<br/>displayName • bio • avatar • updatedAt"]
+  DEVICES["Linked owner writers"]
+
+  CLI --> CORE
+  WEB --> CORE
+  CORE --> MANAGER
+  MANAGER --> CONTEXT
+  CONTEXT --> PROFILE
+  CONTEXT --> DEVICES

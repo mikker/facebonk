@@ -1,0 +1,6 @@
+flowchart LR
+  PROFILE["Active shared profile"] --> SHARE["shareProfile()"]
+  SHARE --> CARD["Signed profile card"]
+  CARD --> IMPORT["Paste or import elsewhere"]
+  IMPORT --> VERIFY["Verify signature"]
+  VERIFY --> PREVIEW["Render trusted profile preview"]

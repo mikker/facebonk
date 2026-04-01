@@ -1,7 +1,7 @@
 import { join, resolve } from 'path'
 import { homedir, tmpdir } from 'os'
 import test from 'brittle'
-import { defaultStorageDir } from '../src/storage-path.js'
+import { defaultStorageDir } from '../cli/storage-path.js'
 
 test('defaultStorageDir matches Pear dev-style storage in development', async (t) => {
   const actual = defaultStorageDir({

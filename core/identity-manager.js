@@ -1,8 +1,14 @@
 import { Manager } from 'autobonk'
 import { IdentityContext } from './identity-context.js'
-import { facebonkSchema } from './schema.js'
+import {
+  createSharedProfileToken,
+  createProfileSignerRecord,
+  restoreProfileSigner
+} from './profile-card.js'
+import { facebonkSchema } from './generated-schema.js'
 
 const ACTIVE_IDENTITY_KEY = 'app/active-identity'
+const PROFILE_SIGNER_KEY = 'app/profile-signer'
 
 function unwrapRecord(node) {
   return node?.value ?? node ?? null
@@ -98,5 +104,39 @@ export class IdentityManager extends Manager {
       profile: await identity.getProfile(),
       devices: await identity.listDevices()
     }
+  }
+
+  async getProfileSigner() {
+    await this.ready()
+
+    const existing = unwrapRecord(await this.localDb.get(PROFILE_SIGNER_KEY))
+    if (existing) {
+      return await restoreProfileSigner(existing)
+    }
+
+    const created = await createProfileSignerRecord()
+    await this.localDb.put(PROFILE_SIGNER_KEY, created.record)
+    return created.signer
+  }
+
+  async shareProfile() {
+    const identity = await this.initIdentity()
+    const signer = await this.getProfileSigner()
+    const profile = (await identity.getProfile()) ?? {}
+    const avatar = await identity.getAvatar()
+
+    return await createSharedProfileToken(
+      {
+        displayName: profile.displayName ?? '',
+        bio: profile.bio ?? '',
+        avatarDataUrl:
+          avatar?.data && avatar.data.length > 0
+            ? `data:${avatar.mimeType || 'application/octet-stream'};base64,${avatar.data.toString('base64')}`
+            : null,
+        avatarMimeType: avatar?.mimeType ?? null,
+        updatedAt: profile.updatedAt ?? Date.now()
+      },
+      signer
+    )
   }
 }

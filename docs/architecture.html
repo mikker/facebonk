@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Facebonk Architecture</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #ffffff;
+        --ink: #1f2937;
+        --muted: #6b7280;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family:
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+        background: var(--bg);
+        color: var(--ink);
+        line-height: 1.6;
+      }
+      main {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 48px 24px 64px;
+      }
+      h1,
+      h2 {
+        font-weight: 700;
+        margin: 0 0 12px;
+      }
+      h1 {
+        font-size: 2.5rem;
+      }
+      h2 {
+        font-size: 1.35rem;
+        margin-top: 32px;
+      }
+      p,
+      li,
+      code {
+        font-size: 1rem;
+      }
+      p,
+      ul,
+      pre {
+        margin: 0 0 16px;
+      }
+      .lede {
+        color: var(--muted);
+        font-size: 1.08rem;
+      }
+      .diagram {
+        margin: 20px 0 24px;
+      }
+      .diagram img {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+      code {
+        font-family:
+          ui-monospace,
+          "SFMono-Regular",
+          "SF Mono",
+          Menlo,
+          Consolas,
+          monospace;
+      }
+      pre {
+        overflow: auto;
+        padding: 0;
+        background: transparent;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Facebonk Architecture</h1>
+      <p class="lede">
+        Facebonk is split into a shared core plus handler-specific frontends. The CLI exists now.
+        A future web management tool can link into the same identity and edit the same profile.
+      </p>
+
+      <h2>Layout</h2>
+      <div class="diagram">
+        <img src="./assets/facebonk-layout.svg" alt="Facebonk layout diagram" />
+      </div>
+      <ul>
+        <li><code>core/</code> contains the Autobonk identity model and reusable APIs.</li>
+        <li><code>cli/</code> contains the current command handler and storage defaults.</li>
+        <li><code>web/</code> is reserved for a future management UI.</li>
+      </ul>
+
+      <h2>Handler model</h2>
+      <div class="diagram">
+        <img src="./assets/facebonk-multi-handler.svg" alt="Facebonk multi-handler diagram" />
+      </div>
+      <p>
+        Handlers are peers, not clients of a central service. The CLI can create the first
+        identity, a future web handler can join through an invite, and both can then replicate and
+        edit the same shared profile.
+      </p>
+
+      <h2>Share cards</h2>
+      <div class="diagram">
+        <img src="./assets/facebonk-share-card.svg" alt="Facebonk share card diagram" />
+      </div>
+      <p>
+        <code>profile share</code> exports a signed profile token for preview or import flows. It
+        is separate from the live replicated identity.
+      </p>
+
+      <h2>Storage rule</h2>
+      <p>
+        Each running handler needs its own local storage directory. Two handlers can control the
+        same identity at the same time. They just cannot both open the exact same local data dir.
+      </p>
+      <pre><code>node cli.js --storage /tmp/facebonk-cli serve
+node cli.js --storage /tmp/facebonk-web link join &lt;invite&gt;</code></pre>
+    </main>
+  </body>
+</html>
