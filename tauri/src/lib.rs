@@ -5,7 +5,7 @@ use std::io::{Read, Write};
 use std::os::unix::net::UnixStream;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Manager, RunEvent, State};
 use tauri_plugin_shell::process::{Command, CommandChild, CommandEvent};
 use tauri_plugin_shell::ShellExt;
 
@@ -103,13 +103,17 @@ impl BackendController {
 
         Ok(controller)
     }
+
+    fn shutdown(&self) {
+        if let Some(child) = self.child.lock().unwrap().take() {
+            let _ = child.kill();
+        }
+    }
 }
 
 impl Drop for BackendController {
     fn drop(&mut self) {
-        if let Some(child) = self.child.lock().unwrap().take() {
-            let _ = child.kill();
-        }
+        self.shutdown();
     }
 }
 
@@ -356,7 +360,7 @@ fn request_backend_socket(_socket_path: &PathBuf, _payload: &Value) -> Result<Va
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .setup(|app| {
             let storage_override = parse_storage_override();
@@ -390,6 +394,23 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![app_info, backend_request])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application");
+
+    app.run(|app_handle, event| match event {
+        RunEvent::WindowEvent { label, event, .. } if label == "main" => {
+            if let tauri::WindowEvent::CloseRequested { .. } = event {
+                if let Some(state) = app_handle.try_state::<AppState>() {
+                    state.backend.shutdown();
+                }
+                app_handle.exit(0);
+            }
+        }
+        RunEvent::ExitRequested { .. } | RunEvent::Exit => {
+            if let Some(state) = app_handle.try_state::<AppState>() {
+                state.backend.shutdown();
+            }
+        }
+        _ => {}
+    });
 }

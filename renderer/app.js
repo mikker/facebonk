@@ -46,11 +46,22 @@ async function requestBackendWithRetry(method, params = {}, retries = 30) {
       return await requestBackend(method, params)
     } catch (error) {
       lastError = error
+      if (isRetryableBackendError(error) === false) {
+        break
+      }
       await delay(150)
     }
   }
 
   throw lastError ?? new Error('backend request failed')
+}
+
+function isRetryableBackendError(error) {
+  const message = String(error?.message || error || '')
+  if (message.includes('File descriptor could not be locked')) return false
+  if (message.includes('No identity initialized')) return false
+  if (message.includes('Invite is required')) return false
+  return true
 }
 
 async function loadAppInfo() {
