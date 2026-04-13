@@ -2,219 +2,144 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0"
-    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Facebonk</title>
     <link rel="stylesheet" href="./styles.css" />
     <script src="./app.js" type="module" defer></script>
   </head>
   <body>
     <main>
-      <h1>Facebonk</h1>
-      <p>
-        Local identity steward app built on the Facebonk core and a Bare backend.
-      </p>
-      <p id="status-message">Loading…</p>
+      <header class="app-header">
+        <h1>Facebonk</h1>
+        <p id="status-message" class="status">Loading…</p>
+      </header>
 
-      <section>
-        <h2>Host</h2>
-        <dl>
-          <dt>Storage dir</dt>
-          <dd id="storage-dir">Loading…</dd>
-          <dt>Storage override</dt>
-          <dd id="storage-override">Loading…</dd>
-          <dt>Bridge</dt>
-          <dd id="bridge">Loading…</dd>
-          <dt>Backend transport</dt>
-          <dd id="backend-transport">Loading…</dd>
-        </dl>
-      </section>
+      <!-- Setup flow -->
+      <section id="setup-section" class="setup" hidden>
+        <div class="setup-intro">
+          <h2>Welcome to Facebonk</h2>
+          <p>Create a new identity or link an existing one to get started.</p>
+        </div>
 
-      <section id="setup-section" hidden>
-        <h2>Set Up Identity</h2>
-
-        <section>
-          <h3>Create profile</h3>
-          <form id="create-form">
-            <p>
+        <div class="card-row">
+          <div class="card">
+            <h3>Create new identity</h3>
+            <form id="create-form">
               <label>
                 Display name
-                <br />
-                <input
-                  type="text"
-                  name="displayName"
-                />
+                <input type="text" name="displayName" placeholder="Your name" />
               </label>
-            </p>
-            <p>
               <label>
                 Bio
-                <br />
-                <textarea
-                  name="bio"
-                  rows="4"
-                ></textarea>
+                <textarea name="bio" rows="3" placeholder="A short bio…"></textarea>
               </label>
-            </p>
-            <p><button type="submit">Create identity</button></p>
-          </form>
-        </section>
+              <button type="submit" class="btn btn-primary">Create identity</button>
+            </form>
+          </div>
 
-        <section>
-          <h3>Link existing profile</h3>
-          <form id="link-form">
-            <p>
+          <div class="card">
+            <h3>Link existing identity</h3>
+            <form id="link-form">
               <label>
-                Invite
-                <br />
-                <textarea
-                  name="invite"
-                  rows="6"
-                ></textarea>
+                Invite code
+                <textarea name="invite" rows="5" placeholder="Paste your invite code here…"></textarea>
               </label>
-            </p>
-            <p><button type="submit">Link identity</button></p>
-          </form>
-        </section>
+              <button type="submit" class="btn btn-primary">Link identity</button>
+            </form>
+          </div>
+        </div>
       </section>
 
+      <!-- Management console -->
       <section id="console-section" hidden>
-        <h2>Management Console</h2>
 
-        <section>
-          <h3>Identity</h3>
-          <dl>
+        <!-- Profile card -->
+        <div class="profile-header">
+          <div class="avatar-area">
+            <div class="avatar-slot" id="avatar-slot">
+              <img id="avatar-preview" alt="Avatar" hidden />
+              <span id="avatar-placeholder" class="avatar-placeholder">?</span>
+            </div>
+            <form id="avatar-form" class="avatar-controls">
+              <label class="btn btn-small btn-secondary avatar-upload-label">
+                Change photo
+                <input id="avatar-file" type="file" accept="image/*" hidden />
+              </label>
+              <button id="clear-avatar-button" type="button" class="btn btn-small btn-ghost" hidden>Remove</button>
+            </form>
+          </div>
+          <div class="profile-info">
+            <form id="profile-form">
+              <label>
+                Display name
+                <input id="profile-name" type="text" name="displayName" placeholder="Your name" />
+              </label>
+              <label>
+                Bio
+                <textarea id="profile-bio" name="bio" rows="3" placeholder="A short bio…"></textarea>
+              </label>
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Save profile</button>
+                <span id="profile-updated-at" class="meta"></span>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="actions-row">
+          <div class="card">
+            <h3>Share your identity</h3>
+            <p class="card-description">Create an invite to link another device, or export a share token for others.</p>
+            <div class="btn-group">
+              <button id="invite-button" type="button" class="btn btn-secondary">Create invite</button>
+              <button id="share-button" type="button" class="btn btn-secondary">Export share token</button>
+            </div>
+            <div id="invite-output-wrap" class="output-wrap" hidden>
+              <label>
+                Invite code
+                <textarea id="invite-output" rows="4" readonly></textarea>
+              </label>
+              <button type="button" class="btn btn-small btn-ghost" data-copy="invite-output">Copy</button>
+            </div>
+            <div id="share-output-wrap" class="output-wrap" hidden>
+              <label>
+                Share token
+                <textarea id="share-output" rows="4" readonly></textarea>
+              </label>
+              <button type="button" class="btn btn-small btn-ghost" data-copy="share-output">Copy</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Devices -->
+        <div class="card">
+          <h3>Linked devices</h3>
+          <ul id="devices-list" class="devices-list"></ul>
+        </div>
+
+        <!-- Identity details (collapsed) -->
+        <details class="details-section">
+          <summary>Identity details</summary>
+          <dl class="meta-list">
             <dt>Identity key</dt>
             <dd><code id="identity-key"></code></dd>
             <dt>Writer key</dt>
             <dd><code id="writer-key"></code></dd>
-            <dt>Updated at</dt>
-            <dd id="profile-updated-at"></dd>
+            <dt>Storage</dt>
+            <dd id="storage-dir"></dd>
           </dl>
-        </section>
-
-        <section>
-          <h3>Profile</h3>
-          <form id="profile-form">
-            <p>
-              <label>
-                Display name
-                <br />
-                <input
-                  id="profile-name"
-                  type="text"
-                  name="displayName"
-                />
-              </label>
-            </p>
-            <p>
-              <label>
-                Bio
-                <br />
-                <textarea
-                  id="profile-bio"
-                  name="bio"
-                  rows="4"
-                ></textarea>
-              </label>
-            </p>
-            <p><button type="submit">Save profile</button></p>
-          </form>
-        </section>
-
-        <section>
-          <h3>Avatar</h3>
-          <p id="avatar-empty">No avatar set.</p>
-          <p>
-            <img
-              id="avatar-preview"
-              alt="Current avatar"
-              hidden
-            />
-          </p>
-          <form id="avatar-form">
-            <p>
-              <input
-                id="avatar-file"
-                type="file"
-                accept="image/*"
-              />
-            </p>
-            <p>
-              <button type="submit">Upload avatar</button>
-              <button
-                id="clear-avatar-button"
-                type="button"
-              >
-                Clear avatar
-              </button>
-            </p>
-          </form>
-        </section>
-
-        <section>
-          <h3>Devices</h3>
-          <ul id="devices-list"></ul>
-        </section>
-
-        <section>
-          <h3>Actions</h3>
-          <p>
-            <button
-              id="invite-button"
-              type="button"
-            >
-              Create link invite
-            </button>
-            <button
-              id="share-button"
-              type="button"
-            >
-              Create share token
-            </button>
-            <button
-              id="refresh-button"
-              type="button"
-            >
-              Refresh
-            </button>
-          </p>
-          <p>
-            <label>
-              Latest invite
-              <br />
-              <textarea
-                id="invite-output"
-                rows="5"
-                readonly
-              ></textarea>
-            </label>
-          </p>
-          <p>
-            <label>
-              Latest share token
-              <br />
-              <textarea
-                id="share-output"
-                rows="6"
-                readonly
-              ></textarea>
-            </label>
-          </p>
-        </section>
+        </details>
       </section>
 
-      <section>
-        <h2>Runtime</h2>
-        <pre id="runtime-output">(waiting)</pre>
-      </section>
+      <button id="refresh-button" type="button" class="btn btn-ghost refresh-btn" title="Refresh">↻ Refresh</button>
 
-      <section>
-        <h2>Backend State</h2>
-        <pre id="backend-output">(waiting)</pre>
-      </section>
+      <!-- Hidden host info (kept for JS compatibility) -->
+      <span id="storage-override" hidden></span>
+      <span id="bridge" hidden></span>
+      <span id="backend-transport" hidden></span>
+      <pre id="runtime-output" hidden></pre>
+      <pre id="backend-output" hidden></pre>
     </main>
   </body>
 </html>

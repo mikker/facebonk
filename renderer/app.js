@@ -14,19 +14,22 @@ const createForm = document.querySelector('#create-form')
 const linkForm = document.querySelector('#link-form')
 const profileForm = document.querySelector('#profile-form')
 const avatarForm = document.querySelector('#avatar-form')
+const avatarFile = document.querySelector('#avatar-file')
 const clearAvatarButton = document.querySelector('#clear-avatar-button')
 const refreshButton = document.querySelector('#refresh-button')
 const inviteButton = document.querySelector('#invite-button')
 const shareButton = document.querySelector('#share-button')
 const inviteOutput = document.querySelector('#invite-output')
+const inviteOutputWrap = document.querySelector('#invite-output-wrap')
 const shareOutput = document.querySelector('#share-output')
+const shareOutputWrap = document.querySelector('#share-output-wrap')
 const runtimeOutput = document.querySelector('#runtime-output')
 const backendOutput = document.querySelector('#backend-output')
 const identityKey = document.querySelector('#identity-key')
 const writerKey = document.querySelector('#writer-key')
 const devicesList = document.querySelector('#devices-list')
 const avatarPreview = document.querySelector('#avatar-preview')
-const avatarEmpty = document.querySelector('#avatar-empty')
+const avatarPlaceholder = document.querySelector('#avatar-placeholder')
 
 const profileFields = {
   name: document.querySelector('#profile-name'),
@@ -103,35 +106,65 @@ function renderBackendState(state) {
   writerKey.textContent = summary.writerKey
   profileFields.name.value = summary.profile?.displayName ?? ''
   profileFields.bio.value = summary.profile?.bio ?? ''
-  profileFields.updatedAt.textContent = formatTimestamp(summary.profile?.updatedAt)
+
+  const ts = formatTimestamp(summary.profile?.updatedAt)
+  profileFields.updatedAt.textContent = ts ? 'Updated ' + ts : ''
 
   if (summary.profile?.avatarDataUrl) {
     avatarPreview.src = summary.profile.avatarDataUrl
     avatarPreview.hidden = false
-    avatarEmpty.hidden = true
+    avatarPlaceholder.hidden = true
+    clearAvatarButton.hidden = false
   } else {
     avatarPreview.hidden = true
     avatarPreview.removeAttribute('src')
-    avatarEmpty.hidden = false
+    avatarPlaceholder.hidden = false
+    avatarPlaceholder.textContent = initialFor(summary.profile?.displayName)
+    clearAvatarButton.hidden = true
   }
 
   devicesList.replaceChildren()
   for (const device of summary.devices || []) {
-    const item = document.createElement('li')
-    const key = document.createElement('code')
-    key.textContent = device.writerKey
-    item.append(key, document.createTextNode(` (${device.roles.join(', ')})`))
+    const isCurrent = device.writerKey === summary.writerKey
 
-    if (device.writerKey !== summary.writerKey) {
+    const li = document.createElement('li')
+
+    const info = document.createElement('div')
+    info.className = 'device-info'
+
+    const keyEl = document.createElement('span')
+    keyEl.className = 'device-key'
+    keyEl.textContent = device.writerKey
+
+    const roleEl = document.createElement('span')
+    roleEl.className = 'device-role'
+    roleEl.textContent = device.roles.join(', ')
+
+    info.append(keyEl, roleEl)
+    li.append(info)
+
+    if (isCurrent) {
+      const badge = document.createElement('span')
+      badge.className = 'device-current'
+      badge.textContent = 'This device'
+      li.append(badge)
+    } else {
       const button = document.createElement('button')
       button.type = 'button'
+      button.className = 'btn btn-danger'
       button.textContent = 'Revoke'
       button.addEventListener('click', () => revokeDevice(device.writerKey))
-      item.append(document.createTextNode(' '), button)
+      li.append(button)
     }
 
-    devicesList.append(item)
+    devicesList.append(li)
   }
+}
+
+function initialFor(name) {
+  if (!name) return '?'
+  const first = name.trim()[0]
+  return first ? first.toUpperCase() : '?'
 }
 
 async function revokeDevice(writerKeyToRevoke) {
@@ -184,6 +217,20 @@ function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+// Copy buttons
+for (const btn of document.querySelectorAll('[data-copy]')) {
+  btn.addEventListener('click', () => {
+    const target = document.getElementById(btn.dataset.copy)
+    if (target?.value) {
+      navigator.clipboard.writeText(target.value).then(() => {
+        const original = btn.textContent
+        btn.textContent = 'Copied!'
+        setTimeout(() => { btn.textContent = original }, 1500)
+      })
+    }
+  })
+}
+
 window.addEventListener('error', (event) => {
   console.error('[facebonk-renderer] uncaught error', event.error || event.message)
   setStatus(String(event.error?.message || event.message || 'Unexpected renderer error'), true)
@@ -209,7 +256,9 @@ createForm.addEventListener('submit', async (event) => {
       bio: form.get('bio'),
     })
     inviteOutput.value = ''
+    inviteOutputWrap.hidden = true
     shareOutput.value = ''
+    shareOutputWrap.hidden = true
     setStatus('Identity created.')
     await refresh()
   } catch (error) {
@@ -228,7 +277,9 @@ linkForm.addEventListener('submit', async (event) => {
       invite: form.get('invite'),
     })
     inviteOutput.value = ''
+    inviteOutputWrap.hidden = true
     shareOutput.value = ''
+    shareOutputWrap.hidden = true
     setStatus('Identity linked.')
     await refresh()
   } catch (error) {
@@ -254,14 +305,10 @@ profileForm.addEventListener('submit', async (event) => {
   }
 })
 
-avatarForm.addEventListener('submit', async (event) => {
-  event.preventDefault()
-
-  const file = document.querySelector('#avatar-file').files?.[0]
-  if (!file) {
-    setStatus('Choose an image file first.', true)
-    return
-  }
+// Avatar: auto-upload on file selection
+avatarFile.addEventListener('change', async () => {
+  const file = avatarFile.files?.[0]
+  if (!file) return
 
   try {
     setStatus('Uploading avatar…')
@@ -275,6 +322,11 @@ avatarForm.addEventListener('submit', async (event) => {
   } catch (error) {
     setStatus(String(error), true)
   }
+})
+
+// Keep form submit as fallback
+avatarForm.addEventListener('submit', (event) => {
+  event.preventDefault()
 })
 
 clearAvatarButton.addEventListener('click', async () => {
@@ -293,7 +345,8 @@ inviteButton.addEventListener('click', async () => {
     setStatus('Creating invite…')
     const result = await requestBackend('create_link_invite')
     inviteOutput.value = result.invite ?? ''
-    setStatus('Invite created.')
+    inviteOutputWrap.hidden = false
+    setStatus('Invite created — copy and share it.')
   } catch (error) {
     setStatus(String(error), true)
   }
@@ -304,6 +357,7 @@ shareButton.addEventListener('click', async () => {
     setStatus('Exporting share token…')
     const result = await requestBackend('share_profile')
     shareOutput.value = result.token ?? ''
+    shareOutputWrap.hidden = false
     setStatus('Share token created.')
   } catch (error) {
     setStatus(String(error), true)
@@ -314,7 +368,7 @@ refreshButton.addEventListener('click', async () => {
   try {
     setStatus('Refreshing…')
     await refresh()
-    setStatus('Refreshed.')
+    setStatus('Ready.')
   } catch (error) {
     setStatus(String(error), true)
   }
