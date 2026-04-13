@@ -1,0 +1,64 @@
+{
+  "name": "facebonk-bare",
+  "private": true,
+  "version": "0.1.0",
+  "type": "commonjs",
+  "imports": {
+    "crypto": {
+      "bare": "bare-crypto",
+      "default": "crypto"
+    },
+    "node:fs": {
+      "bare": "bare-fs",
+      "default": "fs"
+    },
+    "fs": {
+      "bare": "bare-fs",
+      "default": "fs"
+    },
+    "fs/*": {
+      "bare": "bare-fs/*",
+      "default": "fs/*"
+    },
+    "node:path": {
+      "bare": "bare-path",
+      "default": "path"
+    },
+    "path": {
+      "bare": "bare-path",
+      "default": "path"
+    },
+    "node:crypto": {
+      "bare": "bare-crypto",
+      "default": "node:crypto"
+    },
+    "node:process": {
+      "bare": "bare-process",
+      "default": "process"
+    },
+    "process": {
+      "bare": "bare-process",
+      "default": "process"
+    }
+  },
+  "dependencies": {
+    "autobonk": "file:../../autobonk",
+    "bare": "^1.28.1",
+    "bare-buffer": "^3.1.4",
+    "bare-crypto": "^1.13.4",
+    "bare-fs": "^4.3.3",
+    "bare-pipe": "^3.0.3",
+    "bare-path": "^3.0.0",
+    "bare-process": "^4.2.1",
+    "corestore": "^7.9.2",
+    "hyperblobs": "^2.8.0",
+    "hyperdb": "^4.19.1",
+    "hyperdispatch": "^1.4.4",
+    "paparam": "^1.10.0",
+    "pear-runtime-updater": "^3.0.2",
+    "ready-resource": "^1.2.0",
+    "hyperswarm": "^4.17.0",
+    "hyperschema": "^1.17.0",
+    "which-runtime": "^1.3.2"
+  }
+}

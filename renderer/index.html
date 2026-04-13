@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+    <title>Facebonk</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./app.js" type="module" defer></script>
+  </head>
+  <body>
+    <main>
+      <h1>Facebonk</h1>
+      <p>
+        Local identity steward app built on the Facebonk core and a Bare backend.
+      </p>
+      <p id="status-message">Loading…</p>
+
+      <section>
+        <h2>Host</h2>
+        <dl>
+          <dt>Storage dir</dt>
+          <dd id="storage-dir">Loading…</dd>
+          <dt>Storage override</dt>
+          <dd id="storage-override">Loading…</dd>
+          <dt>Bridge</dt>
+          <dd id="bridge">Loading…</dd>
+          <dt>Backend transport</dt>
+          <dd id="backend-transport">Loading…</dd>
+        </dl>
+      </section>
+
+      <section id="setup-section" hidden>
+        <h2>Set Up Identity</h2>
+
+        <section>
+          <h3>Create profile</h3>
+          <form id="create-form">
+            <p>
+              <label>
+                Display name
+                <br />
+                <input
+                  type="text"
+                  name="displayName"
+                />
+              </label>
+            </p>
+            <p>
+              <label>
+                Bio
+                <br />
+                <textarea
+                  name="bio"
+                  rows="4"
+                ></textarea>
+              </label>
+            </p>
+            <p><button type="submit">Create identity</button></p>
+          </form>
+        </section>
+
+        <section>
+          <h3>Link existing profile</h3>
+          <form id="link-form">
+            <p>
+              <label>
+                Invite
+                <br />
+                <textarea
+                  name="invite"
+                  rows="6"
+                ></textarea>
+              </label>
+            </p>
+            <p><button type="submit">Link identity</button></p>
+          </form>
+        </section>
+      </section>
+
+      <section id="console-section" hidden>
+        <h2>Management Console</h2>
+
+        <section>
+          <h3>Identity</h3>
+          <dl>
+            <dt>Identity key</dt>
+            <dd><code id="identity-key"></code></dd>
+            <dt>Writer key</dt>
+            <dd><code id="writer-key"></code></dd>
+            <dt>Updated at</dt>
+            <dd id="profile-updated-at"></dd>
+          </dl>
+        </section>
+
+        <section>
+          <h3>Profile</h3>
+          <form id="profile-form">
+            <p>
+              <label>
+                Display name
+                <br />
+                <input
+                  id="profile-name"
+                  type="text"
+                  name="displayName"
+                />
+              </label>
+            </p>
+            <p>
+              <label>
+                Bio
+                <br />
+                <textarea
+                  id="profile-bio"
+                  name="bio"
+                  rows="4"
+                ></textarea>
+              </label>
+            </p>
+            <p><button type="submit">Save profile</button></p>
+          </form>
+        </section>
+
+        <section>
+          <h3>Avatar</h3>
+          <p id="avatar-empty">No avatar set.</p>
+          <p>
+            <img
+              id="avatar-preview"
+              alt="Current avatar"
+              hidden
+            />
+          </p>
+          <form id="avatar-form">
+            <p>
+              <input
+                id="avatar-file"
+                type="file"
+                accept="image/*"
+              />
+            </p>
+            <p>
+              <button type="submit">Upload avatar</button>
+              <button
+                id="clear-avatar-button"
+                type="button"
+              >
+                Clear avatar
+              </button>
+            </p>
+          </form>
+        </section>
+
+        <section>
+          <h3>Devices</h3>
+          <ul id="devices-list"></ul>
+        </section>
+
+        <section>
+          <h3>Actions</h3>
+          <p>
+            <button
+              id="invite-button"
+              type="button"
+            >
+              Create link invite
+            </button>
+            <button
+              id="share-button"
+              type="button"
+            >
+              Create share token
+            </button>
+            <button
+              id="refresh-button"
+              type="button"
+            >
+              Refresh
+            </button>
+          </p>
+          <p>
+            <label>
+              Latest invite
+              <br />
+              <textarea
+                id="invite-output"
+                rows="5"
+                readonly
+              ></textarea>
+            </label>
+          </p>
+          <p>
+            <label>
+              Latest share token
+              <br />
+              <textarea
+                id="share-output"
+                rows="6"
+                readonly
+              ></textarea>
+            </label>
+          </p>
+        </section>
+      </section>
+
+      <section>
+        <h2>Runtime</h2>
+        <pre id="runtime-output">(waiting)</pre>
+      </section>
+
+      <section>
+        <h2>Backend State</h2>
+        <pre id="backend-output">(waiting)</pre>
+      </section>
+    </main>
+  </body>
+</html>

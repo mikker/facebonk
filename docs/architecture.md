@@ -1,72 +1,72 @@
 # Facebonk Architecture
 
-Facebonk is now split into a shared core plus handler-specific frontends.
+Facebonk is one identity model with two local steward surfaces:
 
-## Layout
+- CLI for direct terminal control
+- desktop app for a local HTML management console
 
-![Facebonk layout](./assets/facebonk-layout.svg)
+Both use the same `core/` APIs and can link into the same shared identity.
 
-- `core/` contains the Autobonk identity model and reusable APIs.
-- `cli/` contains the current command handler and storage defaults.
-- `web/` is reserved for a future management UI.
+## Layers
 
-## Core
+- `core/` owns the Autobonk identity model
+- `cli/` is the terminal steward
+- `tauri/` is the thin desktop shell
+- `bare/` is the local app backend
+- `renderer/` is the plain webview UI
 
-`core/` owns:
+## Desktop runtime
 
-- `IdentityContext`
-- `IdentityManager`
-- signed profile-card helpers
-- generated schema loading
+![Facebonk app runtime](./architecture-overview.svg)
 
-The core does not care whether the caller is a CLI, a web UI, or another local host. It only assumes:
+The important boundary is:
 
-- one handler has one local storage root
-- one handler has one writer key
-- handlers link into the same identity through invites
+- the UI does not own keys
+- the Bare host owns the real `IdentityManager`
+- local storage and peer-to-peer state stay on-device
 
-## Handler model
+## Request flow
 
-![Facebonk multi-handler flow](./assets/facebonk-multi-handler.svg)
+![Facebonk request flow](./request-flow.svg)
 
-Handlers are peers, not clients of a central service.
+The renderer calls Tauri commands, Rust forwards JSON RPC to the local Bare host, and the Bare host executes Facebonk operations directly in-process.
 
-- The CLI can create the first identity.
-- A future web handler can join that identity with an invite.
-- Once linked, both handlers replicate and edit the same profile.
-- No server is the source of truth.
+## Linking model
 
-That means the answer to “can CLI and web edit the same profile?” is yes. The current model already supports it as long as the web handler has its own local store and Hyperstack runtime.
+Facebonk identities are shared by linking devices or apps with invites.
 
-## Share cards
+Typical flow:
 
-![Facebonk share cards](./assets/facebonk-share-card.svg)
+1. Create the identity in the CLI or desktop app.
+2. Keep that handler online.
+3. Create a link invite.
+4. Join from another local handler with its own storage root.
+5. Both handlers now replicate and edit the same profile.
 
-`profile share` exports a signed profile token:
+## Shared profile
 
-- current display name
-- current bio
-- embedded avatar data URL when present
-- timestamp
-- detached signing key for verification
+The shared profile is intentionally small:
 
-This is useful for copy/paste profile sharing and import previews. It is separate from the live replicated identity.
+- `displayName`
+- `bio`
+- `avatar`
+- `updatedAt`
 
-## Current commands
-
-- `init`
-- `serve`
-- `whoami`
-- `profile show`
-- `profile share`
-- `profile set`
-- `link create`
-- `link join`
-- `devices list`
-- `devices revoke`
+`profile share` is separate from live replication. It exports a signed profile token for preview or import flows.
 
 ## Storage rule
 
 Each running handler needs its own local storage directory.
 
-Two handlers can control the same identity at the same time. They just cannot both open the exact same local data dir.
+Two handlers can control the same identity at the same time, but they cannot both open the exact same local data dir.
+
+## Logging
+
+The desktop app backend logs to the terminal:
+
+- startup paths
+- request lifecycle
+- request failures
+- uncaught exceptions and unhandled rejections
+
+That is the main debugging surface right now.

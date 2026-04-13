@@ -1,7 +1,6 @@
 import { rm } from 'fs/promises'
 import test from 'brittle'
 import {
-  IdentityContext,
   IdentityManager,
   profileSummaryFromCard,
   verifyProfileCard
@@ -145,7 +144,10 @@ test('link invite joins a second device onto the same identity', async (t) => {
 
   const linkedProfile = await waitFor(
     () => linkedIdentity.getProfile(),
-    (profile) => profile?.displayName === 'Linked Human'
+    (profile) =>
+      profile?.displayName === 'Linked Human' &&
+      profile?.bio === 'Original profile' &&
+      profile?.avatarMimeType === 'image/webp'
   )
 
   t.is(linkedProfile?.bio, 'Original profile')
@@ -167,7 +169,10 @@ test('link invite joins a second device onto the same identity', async (t) => {
 
   const replicated = await waitFor(
     () => primaryIdentity.getProfile(),
-    (profile) => profile?.displayName === 'Linked Human Updated'
+    (profile) =>
+      profile?.displayName === 'Linked Human Updated' &&
+      profile?.bio === 'Updated from second device' &&
+      profile?.avatarMimeType === 'image/png'
   )
 
   t.is(replicated?.bio, 'Updated from second device')
@@ -187,23 +192,8 @@ test('revoking a linked device removes its write access', async (t) => {
   const primaryIdentity = await first.manager.initIdentity({
     displayName: 'Revoker'
   })
-
-  const linkedIdentity = new IdentityContext(second.manager.corestore.namespace('linked-device'), {
-    schema: second.manager.schema,
-    key: primaryIdentity.key,
-    encryptionKey: primaryIdentity.encryptionKey,
-    bootstrap: second.manager.bootstrap,
-    autobase: second.manager.autobase,
-    blindPeering: second.manager.blindPeering
-  })
-  await linkedIdentity.ready()
-
-  t.teardown(async () => {
-    await linkedIdentity.close()
-  })
-
-  await primaryIdentity.addWriter(linkedIdentity.writerKey)
-  await primaryIdentity.grantRoles(linkedIdentity.writerKey, ['owner'])
+  const invite = await primaryIdentity.createLinkInvite()
+  const linkedIdentity = await second.manager.joinIdentity(invite)
 
   await waitFor(
     () => primaryIdentity.listDevices(),

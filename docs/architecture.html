@@ -33,23 +33,18 @@
       }
       h1,
       h2 {
-        font-weight: 700;
         margin: 0 0 12px;
       }
       h1 {
         font-size: 2.5rem;
       }
       h2 {
-        font-size: 1.35rem;
         margin-top: 32px;
-      }
-      p,
-      li,
-      code {
-        font-size: 1rem;
+        font-size: 1.35rem;
       }
       p,
       ul,
+      ol,
       pre {
         margin: 0 0 16px;
       }
@@ -69,15 +64,14 @@
         font-family:
           ui-monospace,
           "SFMono-Regular",
-          "SF Mono",
           Menlo,
           Consolas,
           monospace;
       }
       pre {
         overflow: auto;
-        padding: 0;
-        background: transparent;
+        white-space: pre-wrap;
+        word-break: break-word;
       }
     </style>
   </head>
@@ -85,46 +79,68 @@
     <main>
       <h1>Facebonk Architecture</h1>
       <p class="lede">
-        Facebonk is split into a shared core plus handler-specific frontends. The CLI exists now.
-        A future web management tool can link into the same identity and edit the same profile.
+        Facebonk is one shared identity model with two local steward surfaces: a CLI and a desktop
+        app. Both use the same core APIs and can link into the same identity.
       </p>
 
-      <h2>Layout</h2>
-      <div class="diagram">
-        <img src="./assets/facebonk-layout.svg" alt="Facebonk layout diagram" />
-      </div>
+      <h2>Layers</h2>
       <ul>
-        <li><code>core/</code> contains the Autobonk identity model and reusable APIs.</li>
-        <li><code>cli/</code> contains the current command handler and storage defaults.</li>
-        <li><code>web/</code> is reserved for a future management UI.</li>
+        <li><code>core/</code> owns the Autobonk identity model.</li>
+        <li><code>cli/</code> is the terminal steward app.</li>
+        <li><code>tauri/</code> is the thin desktop shell.</li>
+        <li><code>bare/</code> is the local app backend.</li>
+        <li><code>renderer/</code> is the plain webview UI.</li>
       </ul>
 
-      <h2>Handler model</h2>
+      <h2>Desktop Runtime</h2>
       <div class="diagram">
-        <img src="./assets/facebonk-multi-handler.svg" alt="Facebonk multi-handler diagram" />
+        <img src="./architecture-overview.svg" alt="Facebonk desktop runtime diagram" />
       </div>
       <p>
-        Handlers are peers, not clients of a central service. The CLI can create the first
-        identity, a future web handler can join through an invite, and both can then replicate and
-        edit the same shared profile.
+        The UI does not own keys. The local Bare host owns the real <code>IdentityManager</code>,
+        and peer-to-peer state stays on-device.
       </p>
 
-      <h2>Share cards</h2>
+      <h2>Request Flow</h2>
       <div class="diagram">
-        <img src="./assets/facebonk-share-card.svg" alt="Facebonk share card diagram" />
+        <img src="./request-flow.svg" alt="Facebonk request flow diagram" />
       </div>
+      <p>
+        The renderer calls Tauri commands, Rust forwards JSON RPC over a local Unix socket, and
+        the Bare host executes Facebonk operations directly in-process.
+      </p>
+
+      <h2>Linking Model</h2>
+      <ol>
+        <li>Create the identity in the CLI or desktop app.</li>
+        <li>Keep that handler online.</li>
+        <li>Create a link invite.</li>
+        <li>Join from another local handler with its own storage root.</li>
+        <li>Both handlers now replicate and edit the same profile.</li>
+      </ol>
+
+      <h2>Shared Profile</h2>
+      <p>The shared profile stays intentionally small:</p>
+      <ul>
+        <li><code>displayName</code></li>
+        <li><code>bio</code></li>
+        <li><code>avatar</code></li>
+        <li><code>updatedAt</code></li>
+      </ul>
       <p>
         <code>profile share</code> exports a signed profile token for preview or import flows. It
         is separate from the live replicated identity.
       </p>
 
-      <h2>Storage rule</h2>
+      <h2>Storage Rule</h2>
       <p>
         Each running handler needs its own local storage directory. Two handlers can control the
-        same identity at the same time. They just cannot both open the exact same local data dir.
+        same identity at the same time, but they cannot both open the exact same local data dir.
       </p>
-      <pre><code>node cli.js --storage /tmp/facebonk-cli serve
-node cli.js --storage /tmp/facebonk-web link join &lt;invite&gt;</code></pre>
+
+      <h2>Logging</h2>
+      <p>The desktop app backend logs startup, request lifecycle, and uncaught failures to the terminal.</p>
+      <pre><code>npm run dev -- -- -- --storage /tmp/facebonk-app</code></pre>
     </main>
   </body>
 </html>

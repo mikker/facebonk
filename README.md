@@ -2,40 +2,36 @@
 
 Peer-to-peer identity manager built on Autobonk.
 
-Facebonk keeps one shared identity context and lets multiple local handlers operate on it. Today the repo ships a CLI handler. A web management handler can use the same core model: it gets its own local storage and writer key, links into the existing identity, and then reads and writes the same shared profile.
+Facebonk now has three layers:
+
+- `core/`: shared identity model and manager API
+- `cli/`: terminal steward app
+- desktop app: Tauri shell + local Bare backend + plain webview UI
+
+The identity itself stays small and shared:
+
+- one `IdentityContext` per identity
+- linked devices and apps write as their own local writer keys
+- shared profile fields: `displayName`, `bio`, `avatar`, `updatedAt`
+
+## Runtime
+
+![Facebonk app runtime](./docs/architecture-overview.svg)
+
+![Facebonk request flow](./docs/request-flow.svg)
+
+The desktop app is local-only. The Tauri shell starts a local Bare host, and that Bare host owns the real Facebonk manager and storage. The browser UI is only a view and control surface.
 
 ## Repo layout
 
-- `core/`: shared identity model, signing helpers, and manager API
-- `cli/`: command handler and storage-path defaults
-- `web/`: placeholder for a future web management handler
-- `schema.js`: generated schema build entrypoint
+- `core/`: `IdentityManager`, `IdentityContext`, profile-share helpers, generated schema
+- `cli/`: CLI entrypoint and storage defaults
+- `bare/`: local backend for the desktop app
+- `renderer/`: plain HTML/JS management console
+- `tauri/`: desktop shell
+- `scripts/prepare-sidecar.mjs`: stages the Bare sidecar for dev/build
 
-## Current shape
-
-![Facebonk layout](./docs/assets/facebonk-layout.svg)
-
-- One identity is one shared `IdentityContext`.
-- Each handler has its own local store and writer key.
-- Linked handlers become `owner` writers in the same identity.
-- Profile state stays shared: `displayName`, `bio`, `avatar`, `updatedAt`.
-
-## Multi-handler flow
-
-![Facebonk multi-handler flow](./docs/assets/facebonk-multi-handler.svg)
-
-1. Start in the CLI and create the identity.
-2. Create an invite from that handler.
-3. Link another handler, such as a future web UI.
-4. Both handlers can now edit the same profile.
-
-## Signed share cards
-
-![Facebonk share cards](./docs/assets/facebonk-share-card.svg)
-
-`profile share` exports the current profile as a signed token with embedded avatar data. That is for preview/import flows. It is not the replicated identity itself.
-
-## Usage
+## CLI usage
 
 Create an identity:
 
@@ -55,32 +51,67 @@ Set or replace the avatar:
 node cli.js profile set --avatar ./avatar.png
 ```
 
-Export a signed profile card:
-
-```sh
-node cli.js profile share
-```
-
 Create a link invite:
 
 ```sh
 node cli.js link create
 ```
 
-Keep the current handler online for linking:
+Keep the current device online for linking:
 
 ```sh
 node cli.js serve
 ```
 
-Join the same identity from another local handler store:
+Join the same identity from another local store:
 
 ```sh
-node cli.js --storage /tmp/facebonk-web link join <invite>
+node cli.js --storage /tmp/facebonk-b link join <invite>
 ```
 
-## Notes
+## Desktop app usage
 
-- The local storage lock is per data dir, not per identity.
-- Two handlers can use the same identity at once as long as they use different local storage roots.
-- A future web management tool fits this model cleanly if it can run the same Hyperstack runtime and keep its own local store.
+Install dependencies:
+
+```sh
+npm install
+npm install --prefix bare
+```
+
+Check the desktop app build:
+
+```sh
+npm run check
+```
+
+Run the desktop app on an isolated storage dir:
+
+```sh
+npm run dev -- -- -- --storage /tmp/facebonk-app
+```
+
+The desktop app can:
+
+- create a new identity
+- link an existing identity by invite
+- edit profile fields
+- upload or clear an avatar
+- create new link invites
+- export signed profile share tokens
+- list linked devices and revoke non-current ones
+
+## Logging
+
+When the desktop app is running, the terminal shows backend logs from the local Bare host, including:
+
+- backend startup and storage paths
+- request start and completion
+- uncaught exceptions and unhandled rejections
+
+That makes link failures and runtime crashes visible without attaching a debugger.
+
+## Storage rule
+
+Each running device or app needs its own local storage directory.
+
+Two linked devices can control the same identity at the same time. They just cannot both open the exact same local data dir.

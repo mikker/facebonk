@@ -1,7 +1,7 @@
 {
   "name": "facebonk",
   "version": "0.1.0",
-  "description": "CLI-first peer-to-peer identity manager built on Autobonk",
+  "description": "Peer-to-peer identity manager with shared core, CLI, and local desktop app",
   "type": "module",
   "private": true,
   "bin": {
@@ -39,8 +39,20 @@
     }
   },
   "scripts": {
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "tauri": "tauri",
+    "cli": "node cli.js",
+    "app:dev": "tauri dev",
+    "app:build": "tauri build",
+    "postinstall": "npm install --prefix bare",
+    "sidecar:debug": "node scripts/prepare-sidecar.mjs --debug",
+    "sidecar:release": "node scripts/prepare-sidecar.mjs --release",
+    "check": "npm run sidecar:debug && cargo check --manifest-path tauri/Cargo.toml",
+    "app:check": "npm run sidecar:debug && cargo check --manifest-path tauri/Cargo.toml",
+    "fmt": "cargo fmt --manifest-path tauri/Cargo.toml",
     "schema:build": "node schema.js",
-    "test": "npm run schema:build && brittle test/*.test.js",
+    "test": "npm run schema:build && brittle --timeout 60000 test/*.test.js",
     "start": "node cli.js"
   },
   "dependencies": {
@@ -56,6 +68,7 @@
     "hyperschema": "^1.17.0"
   },
   "devDependencies": {
+    "@tauri-apps/cli": "^2.10.1",
     "brittle": "^3.19.1"
   }
 }
