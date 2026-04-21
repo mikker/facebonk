@@ -13,6 +13,7 @@ The identity itself stays small and shared:
 - one `IdentityContext` per identity
 - linked devices and apps write as their own local writer keys
 - shared profile fields: `displayName`, `bio`, `avatar`, `updatedAt`
+- Bonk Docs auth uses a short `facebonk://auth?...` launch URL plus a loopback callback instead of putting profile data in the URL
 
 ## Runtime
 
@@ -22,12 +23,23 @@ The identity itself stays small and shared:
 
 The desktop app is local-only. The Tauri shell starts a local Bare host, and that Bare host owns the real Facebonk manager and storage. The browser UI is only a view and control surface.
 
+For app-to-app linking, Facebonk now acts more like a local OAuth steward:
+
+- Bonk Docs launches Facebonk with `facebonk://auth?...`
+- the URL only carries `client`, `state`, `callback`, and optional `return_to`
+- Facebonk asks for approval locally
+- on approval, Facebonk exports the signed profile token and `POST`s it back to the caller's loopback callback
+- avatars stay in the signed token body and never go in the URL
+
+See [docs/bonkdocs-auth.md](./docs/bonkdocs-auth.md).
+
 ## Repo layout
 
 - `core/`: `IdentityManager`, `IdentityContext`, profile-share helpers, generated schema
+- `core/auth-link.js`: helper for `facebonk://auth` launch URLs
 - `cli/`: CLI entrypoint and storage defaults
 - `bare/`: local backend for the desktop app
-- `renderer/`: plain HTML/JS management console
+- `renderer/`: plain HTML/JS management console and local approval UI
 - `tauri/`: desktop shell
 - `scripts/prepare-sidecar.mjs`: stages the Bare sidecar for dev/build
 
@@ -97,8 +109,22 @@ The desktop app can:
 - edit profile fields
 - upload or clear an avatar
 - create new link invites
-- export signed profile share tokens
+- approve Bonk Docs auth requests from `facebonk://auth`
+- export signed profile share tokens for manual fallback flows
 - list linked devices and revoke non-current ones
+
+## Bonk Docs auth flow
+
+Bonk Docs should use the desktop app flow instead of asking users to paste giant tokens:
+
+1. Bonk Docs starts a short-lived loopback callback server.
+2. Bonk Docs opens `facebonk://auth?...`.
+3. Facebonk validates the loopback callback and local `bonk-docs:` return target.
+4. Facebonk shows a local approval screen.
+5. On approval, Facebonk calls `share_profile`, then `POST`s `{ state, token }` to the callback.
+6. Bonk Docs links the returned signed token and can optionally be reopened via `bonk-docs://...`.
+
+`facebonk profile share` still exists, but it is now the manual fallback path rather than the primary integration path for desktop apps.
 
 ## Logging
 

@@ -109,6 +109,10 @@
         The renderer calls Tauri commands, Rust forwards JSON RPC over a local Unix socket, and
         the Bare host executes Facebonk operations directly in-process.
       </p>
+      <p>
+        The same desktop shell also accepts <code>facebonk://auth</code> launch URLs from Bonk
+        Docs, queues them in Tauri, and hands them to the renderer for local approval.
+      </p>
 
       <h2>Linking Model</h2>
       <ol>
@@ -129,7 +133,21 @@
       </ul>
       <p>
         <code>profile share</code> exports a signed profile token for preview or import flows. It
-        is separate from the live replicated identity.
+        is separate from the live replicated identity. For Bonk Docs desktop linking, that token is
+        now delivered over a loopback callback instead of being embedded in a launch URL.
+      </p>
+
+      <h2>Bonk Docs Desktop Auth</h2>
+      <ol>
+        <li>Bonk Docs opens <code>facebonk://auth?... </code> with a loopback callback URL.</li>
+        <li>The request only carries <code>client</code>, <code>state</code>, <code>callback</code>, and optional <code>return_to</code>.</li>
+        <li>Facebonk validates the request and shows a local approval screen.</li>
+        <li>On approval, Facebonk exports the signed profile token and <code>POST</code>s it back to the callback.</li>
+        <li>Bonk Docs links the returned token and can optionally be reopened through <code>bonk-docs://...</code>.</li>
+      </ol>
+      <p>
+        This keeps avatar bytes out of launch URLs while preserving the existing signed-token model.
+        For more detail, see <code>docs/bonkdocs-auth.md</code> in the repository.
       </p>
 
       <h2>Storage Rule</h2>

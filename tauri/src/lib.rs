@@ -5,7 +5,8 @@ use std::io::{Read, Write};
 use std::os::unix::net::UnixStream;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use tauri::{AppHandle, Manager, RunEvent, State};
+use tauri::{AppHandle, Emitter, Manager, RunEvent, State};
+use tauri_plugin_deep_link::DeepLinkExt;
 use tauri_plugin_shell::process::{Command, CommandChild, CommandEvent};
 use tauri_plugin_shell::ShellExt;
 
@@ -16,6 +17,7 @@ struct AppState {
     updates_enabled: bool,
     backend_socket_path: PathBuf,
     backend: Arc<BackendController>,
+    pending_auth_urls: Arc<Mutex<Vec<String>>>,
 }
 
 struct BackendController {
@@ -30,6 +32,12 @@ struct AppInfo {
     updates_enabled: bool,
     bridge: &'static str,
     backend_transport: &'static str,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct FacebonkAuthUrlEvent {
+    url: String,
 }
 
 impl BackendController {
@@ -147,6 +155,25 @@ fn parse_updates_enabled() -> bool {
     !cfg!(dev)
 }
 
+fn collect_auth_urls_from_args() -> Vec<String> {
+    std::env::args()
+        .skip(1)
+        .filter(|arg| arg.starts_with("facebonk://"))
+        .collect()
+}
+
+fn queue_auth_url(app: &AppHandle, pending_auth_urls: &Arc<Mutex<Vec<String>>>, url: String) {
+    {
+        let mut pending = pending_auth_urls.lock().unwrap();
+        pending.push(url.clone());
+    }
+
+    let _ = app.emit(
+        "facebonk-auth-url",
+        FacebonkAuthUrlEvent { url },
+    );
+}
+
 fn resolve_storage_dir(
     app: &AppHandle,
     storage_override: &Option<PathBuf>,
@@ -201,6 +228,23 @@ fn backend_request(
             .unwrap_or("backend returned an unknown error");
         Err(error.to_string())
     }
+}
+
+#[tauri::command]
+fn consume_pending_auth_url(state: State<'_, AppState>) -> Option<String> {
+    let mut pending = state.pending_auth_urls.lock().unwrap();
+    if pending.is_empty() {
+        None
+    } else {
+        Some(pending.remove(0))
+    }
+}
+
+#[tauri::command]
+fn open_external_url(app: AppHandle, url: String) -> Result<(), String> {
+    app.shell()
+        .open(url, None)
+        .map_err(|error| format!("failed to open external URL: {error}"))
 }
 
 fn backend_command(app: &AppHandle) -> Result<Command, String> {
@@ -361,12 +405,14 @@ fn request_backend_socket(_socket_path: &PathBuf, _payload: &Value) -> Result<Va
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let app = tauri::Builder::default()
+        .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_shell::init())
         .setup(|app| {
             let storage_override = parse_storage_override();
             let updates_enabled = parse_updates_enabled();
             let storage_dir = resolve_storage_dir(app.handle(), &storage_override)?;
             let backend_socket_path = backend_socket_path();
+            let pending_auth_urls = Arc::new(Mutex::new(Vec::new()));
 
             std::fs::create_dir_all(&storage_dir)
                 .map_err(|error| format!("failed to create storage dir: {error}"))?;
@@ -383,17 +429,40 @@ pub fn run() {
                 &backend_socket_path,
             )?;
 
+            let app_handle = app.handle().clone();
+            let app_handle_for_events = app_handle.clone();
+            let pending_auth_urls_for_events = pending_auth_urls.clone();
+            app_handle.deep_link().on_open_url(move |event| {
+                for url in event.urls() {
+                    queue_auth_url(
+                        &app_handle_for_events,
+                        &pending_auth_urls_for_events,
+                        url.to_string(),
+                    );
+                }
+            });
+
             app.manage(AppState {
                 storage_dir,
                 storage_override,
                 updates_enabled,
                 backend_socket_path,
                 backend,
+                pending_auth_urls: pending_auth_urls.clone(),
             });
+
+            for url in collect_auth_urls_from_args() {
+                queue_auth_url(app.handle(), &pending_auth_urls, url);
+            }
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![app_info, backend_request])
+        .invoke_handler(tauri::generate_handler![
+            app_info,
+            backend_request,
+            consume_pending_auth_url,
+            open_external_url
+        ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
 

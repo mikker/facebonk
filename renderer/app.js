@@ -1,4 +1,7 @@
+import { parseFacebonkAuthUrl } from './auth-link.js'
+
 const invoke = window.__TAURI__.core.invoke
+const listen = window.__TAURI__.event.listen
 
 const hostInfo = {
   storageDir: document.querySelector('#storage-dir'),
@@ -7,6 +10,12 @@ const hostInfo = {
   backendTransport: document.querySelector('#backend-transport'),
 }
 
+const authSection = document.querySelector('#auth-section')
+const authDescription = document.querySelector('#auth-description')
+const authClient = document.querySelector('#auth-client')
+const authCallbackUrl = document.querySelector('#auth-callback-url')
+const authApproveButton = document.querySelector('#auth-approve-button')
+const authRejectButton = document.querySelector('#auth-reject-button')
 const setupSection = document.querySelector('#setup-section')
 const consoleSection = document.querySelector('#console-section')
 const statusMessage = document.querySelector('#status-message')
@@ -36,6 +45,9 @@ const profileFields = {
   bio: document.querySelector('#profile-bio'),
   updatedAt: document.querySelector('#profile-updated-at'),
 }
+
+let currentBackendState = null
+let pendingAuthRequest = null
 
 async function requestBackend(method, params = {}) {
   return await invoke('backend_request', { method, params })
@@ -90,7 +102,9 @@ function renderRuntime(runtimeState) {
 }
 
 function renderBackendState(state) {
+  currentBackendState = state
   backendOutput.textContent = JSON.stringify(state, null, 2)
+  renderAuthRequest()
 
   if (!state.initialized || !state.summary) {
     setupSection.hidden = false
@@ -159,6 +173,36 @@ function renderBackendState(state) {
 
     devicesList.append(li)
   }
+}
+
+function renderAuthRequest() {
+  if (!pendingAuthRequest) {
+    authSection.hidden = true
+    return
+  }
+
+  const initialized = Boolean(currentBackendState?.initialized)
+  authSection.hidden = false
+  authClient.textContent = pendingAuthRequest.client || 'bonk-docs'
+  authCallbackUrl.textContent = pendingAuthRequest.callbackUrl
+  authDescription.textContent = initialized
+    ? 'Bonk Docs is requesting your signed Facebonk profile.'
+    : 'Create or link an identity first, then approve this Bonk Docs request.'
+  authApproveButton.disabled = !initialized
+}
+
+function clearPendingAuthRequest() {
+  pendingAuthRequest = null
+  renderAuthRequest()
+}
+
+function setPendingAuthRequest(rawUrl) {
+  const value = typeof rawUrl === 'string' ? rawUrl.trim() : ''
+  if (!value) return
+
+  pendingAuthRequest = parseFacebonkAuthUrl(value)
+  renderAuthRequest()
+  setStatus('Bonk Docs is waiting for your approval.')
 }
 
 function initialFor(name) {
@@ -364,6 +408,47 @@ shareButton.addEventListener('click', async () => {
   }
 })
 
+authApproveButton.addEventListener('click', async () => {
+  if (!pendingAuthRequest) return
+
+  try {
+    setStatus('Sharing profile with Bonk Docs…')
+    const result = await requestBackend('share_profile')
+    const response = await fetch(pendingAuthRequest.callbackUrl, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        state: pendingAuthRequest.state,
+        token: result.token ?? ''
+      })
+    })
+
+    if (!response.ok) {
+      throw new Error(await response.text())
+    }
+
+    if (pendingAuthRequest.returnTo) {
+      try {
+        await invoke('open_external_url', { url: pendingAuthRequest.returnTo })
+      } catch (error) {
+        console.warn('[facebonk-renderer] failed to return to Bonk Docs', error)
+      }
+    }
+
+    clearPendingAuthRequest()
+    setStatus('Profile shared with Bonk Docs.')
+  } catch (error) {
+    setStatus(String(error), true)
+  }
+})
+
+authRejectButton.addEventListener('click', () => {
+  clearPendingAuthRequest()
+  setStatus('Canceled Bonk Docs auth request.')
+})
+
 refreshButton.addEventListener('click', async () => {
   try {
     setStatus('Refreshing…')
@@ -376,8 +461,21 @@ refreshButton.addEventListener('click', async () => {
 
 window.addEventListener('DOMContentLoaded', async () => {
   try {
+    await listen('facebonk-auth-url', (event) => {
+      const url = event?.payload?.url ?? event?.payload
+      try {
+        setPendingAuthRequest(url)
+      } catch (error) {
+        setStatus(String(error), true)
+      }
+    })
+
     await loadAppInfo()
     await refresh()
+    const pendingUrl = await invoke('consume_pending_auth_url')
+    if (pendingUrl) {
+      setPendingAuthRequest(pendingUrl)
+    }
     setStatus('Ready.')
   } catch (error) {
     setStatus(String(error), true)

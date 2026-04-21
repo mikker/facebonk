@@ -64,6 +64,7 @@ if (shouldCopy) {
 }
 
 if (!release) {
+  mkdirSync(stagedResourcesDir, { recursive: true })
   mkdirSync(stagedBackendDir, { recursive: true })
   writeFileIfChanged(join(stagedBackendDir, '.keep'), '')
   copyFileIfChanged(join(root, 'pear.app.json'), join(stagedResourcesDir, 'pear.app.json'))

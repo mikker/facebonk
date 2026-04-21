@@ -14,6 +14,23 @@
         <p id="status-message" class="status">Loading…</p>
       </header>
 
+      <section id="auth-section" class="card" hidden>
+        <h3>Share with Bonk Docs</h3>
+        <p id="auth-description" class="card-description">
+          Bonk Docs is requesting your signed Facebonk profile.
+        </p>
+        <dl class="meta-list">
+          <dt>Client</dt>
+          <dd id="auth-client">bonk-docs</dd>
+          <dt>Callback</dt>
+          <dd><code id="auth-callback-url"></code></dd>
+        </dl>
+        <div class="btn-group">
+          <button id="auth-approve-button" type="button" class="btn btn-primary">Approve</button>
+          <button id="auth-reject-button" type="button" class="btn btn-ghost">Cancel</button>
+        </div>
+      </section>
+
       <!-- Setup flow -->
       <section id="setup-section" class="setup" hidden>
         <div class="setup-intro">

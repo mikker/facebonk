@@ -31,6 +31,8 @@ The important boundary is:
 
 The renderer calls Tauri commands, Rust forwards JSON RPC to the local Bare host, and the Bare host executes Facebonk operations directly in-process.
 
+That same desktop shell also handles `facebonk://auth` launch URLs for Bonk Docs. The deep link is queued in Tauri, emitted into the renderer, and the renderer completes the approval flow locally.
+
 ## Linking model
 
 Facebonk identities are shared by linking devices or apps with invites.
@@ -52,7 +54,21 @@ The shared profile is intentionally small:
 - `avatar`
 - `updatedAt`
 
-`profile share` is separate from live replication. It exports a signed profile token for preview or import flows.
+`profile share` is separate from live replication. It exports a signed profile token for preview or import flows. For desktop app-to-app linking, that signed token is now delivered over a loopback callback instead of being stuffed into a launch URL.
+
+## Bonk Docs desktop auth
+
+Bonk Docs integration now uses a local auth handshake:
+
+1. Bonk Docs opens `facebonk://auth?...`.
+2. The URL only contains `client`, `state`, `callback`, and optional `return_to`.
+3. Facebonk validates the request and shows a local approval screen.
+4. On approval, Facebonk exports the signed profile token and `POST`s it to the loopback callback.
+5. Bonk Docs links the returned token and may be reopened through `bonk-docs://...`.
+
+This keeps avatar bytes and other profile payload out of launch URLs while preserving the existing signed-token model.
+
+See [bonkdocs-auth.md](./bonkdocs-auth.md).
 
 ## Storage rule
 
