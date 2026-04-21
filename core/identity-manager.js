@@ -1,10 +1,12 @@
 import { Manager } from 'autobonk'
 import { IdentityContext } from './identity-context.js'
 import {
-  createSharedProfileToken,
+  createAssetRef,
+  createConnectBundle,
+  createProfileDocument,
   createProfileSignerRecord,
   restoreProfileSigner
-} from './profile-card.js'
+} from './connect.js'
 import { facebonkSchema } from './generated-schema.js'
 
 const ACTIVE_IDENTITY_KEY = 'app/active-identity'
@@ -55,6 +57,7 @@ export class IdentityManager extends Manager {
       name: 'Linked Facebonk Identity'
     })
     await context.waitForLocalRole('owner')
+    await context.waitForLocalPermission('user:invite')
     await this.setActiveIdentity(context.key.toString('hex'))
     return context
   }
@@ -119,24 +122,69 @@ export class IdentityManager extends Manager {
     return created.signer
   }
 
-  async shareProfile() {
+  async createProfileDocument() {
     const identity = await this.initIdentity()
     const signer = await this.getProfileSigner()
     const profile = (await identity.getProfile()) ?? {}
     const avatar = await identity.getAvatar()
 
-    return await createSharedProfileToken(
+    return await createProfileDocument(
       {
         displayName: profile.displayName ?? '',
         bio: profile.bio ?? '',
-        avatarDataUrl:
+        avatar:
           avatar?.data && avatar.data.length > 0
-            ? `data:${avatar.mimeType || 'application/octet-stream'};base64,${avatar.data.toString('base64')}`
+            ? createAssetRef(avatar.data, {
+                mimeType: avatar.mimeType || 'application/octet-stream'
+              })
             : null,
-        avatarMimeType: avatar?.mimeType ?? null,
         updatedAt: profile.updatedAt ?? Date.now()
       },
       signer
     )
+  }
+
+  async createConnectBundle(options = {}) {
+    const identity = await this.initIdentity()
+    const signer = await this.getProfileSigner()
+    const profile = (await identity.getProfile()) ?? {}
+    const avatar = await identity.getAvatar()
+
+    return await createConnectBundle(
+      {
+        audience: options.audience,
+        nonce: options.nonce,
+        issuedAt: options.issuedAt,
+        expiresAt: options.expiresAt,
+        profile: {
+          displayName: profile.displayName ?? '',
+          bio: profile.bio ?? '',
+          avatar:
+            avatar?.data && avatar.data.length > 0
+              ? createAssetRef(avatar.data, {
+                  mimeType: avatar.mimeType || 'application/octet-stream'
+                })
+              : null,
+          updatedAt: profile.updatedAt ?? Date.now()
+        }
+      },
+      signer
+    )
+  }
+
+  async getAvatarAsset() {
+    const identity = await this.getActiveIdentity()
+    if (!identity) return null
+
+    const avatar = await identity.getAvatar()
+    if (!avatar?.data || avatar.data.length === 0) return null
+
+    return {
+      data: avatar.data,
+      mimeType: avatar.mimeType || 'application/octet-stream',
+      asset: createAssetRef(avatar.data, {
+        mimeType: avatar.mimeType || 'application/octet-stream'
+      })
+    }
   }
 }

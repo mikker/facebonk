@@ -265,8 +265,15 @@ async function handleFacebonkRequest(method, params) {
     return { invite }
   }
 
-  if (method === 'share_profile') {
-    return { token: await manager.shareProfile() }
+  if (method === 'create_connect_bundle') {
+    return {
+      ...(await manager.createConnectBundle({
+        audience: params.audience,
+        nonce: params.nonce,
+        expiresAt: params.expiresAt,
+      })),
+      avatarAsset: await manager.getAvatarAsset(),
+    }
   }
 
   if (method === 'revoke_device') {
@@ -312,6 +319,13 @@ function summarizeParams(method, params) {
     return { writerKey: params.writerKey ?? null }
   }
 
+  if (method === 'create_connect_bundle') {
+    return {
+      audience: params.audience ?? null,
+      nonceLength: typeof params.nonce === 'string' ? params.nonce.length : 0,
+    }
+  }
+
   return null
 }
 
@@ -328,8 +342,11 @@ function summarizeResult(method, result) {
     return { inviteLength: typeof result?.invite === 'string' ? result.invite.length : 0 }
   }
 
-  if (method === 'share_profile') {
-    return { tokenLength: typeof result?.token === 'string' ? result.token.length : 0 }
+  if (method === 'create_connect_bundle') {
+    return {
+      proofLength: typeof result?.proof === 'string' ? result.proof.length : 0,
+      hasAvatarAsset: Boolean(result?.avatarAsset?.asset),
+    }
   }
 
   if (method === 'set_avatar' || method === 'clear_avatar') {

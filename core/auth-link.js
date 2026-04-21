@@ -1,6 +1,5 @@
 export const FACEBONK_AUTH_SCHEME = 'facebonk'
 export const FACEBONK_AUTH_ACTION = 'auth'
-export const BONK_DOCS_RETURN_SCHEME = 'bonk-docs:'
 
 function normalizeText(value) {
   return typeof value === 'string' ? value.trim() : ''
@@ -59,10 +58,6 @@ export function normalizeReturnToUrl(value) {
   if (!text) return null
 
   const url = parseUrl(text, 'Return URL must be a valid URL')
-  if (url.protocol !== BONK_DOCS_RETURN_SCHEME) {
-    throw new Error('Return URL must target Bonk Docs')
-  }
-
   return url.toString()
 }
 

@@ -13,7 +13,6 @@ Commands:
   serve
   whoami
   profile show
-  profile share
   profile set [--name NAME] [--bio BIO] [--avatar PATH] [--clear-avatar]
   link create [--expires-ms N]
   link join <invite>
@@ -156,10 +155,9 @@ async function interactive(manager) {
     while (true) {
       console.log('\n1. Show active identity')
       console.log('2. Edit profile')
-      console.log('3. Share profile token')
-      console.log('4. Create link invite')
-      console.log('5. List devices')
-      console.log('6. Exit')
+      console.log('3. Create link invite')
+      console.log('4. List devices')
+      console.log('5. Exit')
 
       const answer = (await rl.question('Choose an action: ')).trim()
 
@@ -178,18 +176,13 @@ async function interactive(manager) {
       }
 
       if (answer === '3') {
-        console.log(await manager.shareProfile())
-        continue
-      }
-
-      if (answer === '4') {
         const identity = await manager.getActiveIdentity()
         const invite = await identity.createLinkInvite()
         console.log(invite)
         continue
       }
 
-      if (answer === '5') {
+      if (answer === '4') {
         const identity = await manager.getActiveIdentity()
         const devices = await identity.listDevices()
         for (const device of devices) {
@@ -198,7 +191,7 @@ async function interactive(manager) {
         continue
       }
 
-      if (answer === '6') {
+      if (answer === '5') {
         return
       }
     }
@@ -264,11 +257,6 @@ export async function main(argv = getArgv()) {
     if (command === 'profile' && subcommand === 'show') {
       const identity = await manager.getActiveIdentity()
       console.log(formatProfile(await identity?.getProfile()))
-      return
-    }
-
-    if (command === 'profile' && subcommand === 'share') {
-      console.log(await manager.shareProfile())
       return
     }
 

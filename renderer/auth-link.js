@@ -57,10 +57,6 @@ function normalizeReturnToUrl(value) {
   if (!text) return null
 
   const url = parseUrl(text, 'Return URL must be a valid URL')
-  if (url.protocol !== 'bonk-docs:') {
-    throw new Error('Return URL must target Bonk Docs')
-  }
-
   return url.toString()
 }
 

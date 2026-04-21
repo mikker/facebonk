@@ -1,7 +1,6 @@
 import { parseFacebonkAuthUrl } from './auth-link.js'
 
-const invoke = window.__TAURI__.core.invoke
-const listen = window.__TAURI__.event.listen
+const bridge = window.bridge
 
 const hostInfo = {
   storageDir: document.querySelector('#storage-dir'),
@@ -27,11 +26,8 @@ const avatarFile = document.querySelector('#avatar-file')
 const clearAvatarButton = document.querySelector('#clear-avatar-button')
 const refreshButton = document.querySelector('#refresh-button')
 const inviteButton = document.querySelector('#invite-button')
-const shareButton = document.querySelector('#share-button')
 const inviteOutput = document.querySelector('#invite-output')
 const inviteOutputWrap = document.querySelector('#invite-output-wrap')
-const shareOutput = document.querySelector('#share-output')
-const shareOutputWrap = document.querySelector('#share-output-wrap')
 const runtimeOutput = document.querySelector('#runtime-output')
 const backendOutput = document.querySelector('#backend-output')
 const identityKey = document.querySelector('#identity-key')
@@ -50,7 +46,7 @@ let currentBackendState = null
 let pendingAuthRequest = null
 
 async function requestBackend(method, params = {}) {
-  return await invoke('backend_request', { method, params })
+  return await bridge.backendRequest(method, params)
 }
 
 async function requestBackendWithRetry(method, params = {}, retries = 30) {
@@ -80,7 +76,7 @@ function isRetryableBackendError(error) {
 }
 
 async function loadAppInfo() {
-  const info = await invoke('app_info')
+  const info = await bridge.appInfo()
   hostInfo.storageDir.textContent = info.storageDir
   hostInfo.storageOverride.textContent = info.storageOverride ?? 'default app data directory'
   hostInfo.bridge.textContent = info.bridge
@@ -183,11 +179,11 @@ function renderAuthRequest() {
 
   const initialized = Boolean(currentBackendState?.initialized)
   authSection.hidden = false
-  authClient.textContent = pendingAuthRequest.client || 'bonk-docs'
+  authClient.textContent = pendingAuthRequest.client || 'consumer-app'
   authCallbackUrl.textContent = pendingAuthRequest.callbackUrl
   authDescription.textContent = initialized
-    ? 'Bonk Docs is requesting your signed Facebonk profile.'
-    : 'Create or link an identity first, then approve this Bonk Docs request.'
+    ? 'This app is requesting a signed connect proof and profile document. Large assets stay separate.'
+    : 'Create or link an identity first, then approve this connect request.'
   authApproveButton.disabled = !initialized
 }
 
@@ -200,9 +196,12 @@ function setPendingAuthRequest(rawUrl) {
   const value = typeof rawUrl === 'string' ? rawUrl.trim() : ''
   if (!value) return
 
-  pendingAuthRequest = parseFacebonkAuthUrl(value)
+  pendingAuthRequest = {
+    ...parseFacebonkAuthUrl(value),
+    rawUrl: value,
+  }
   renderAuthRequest()
-  setStatus('Bonk Docs is waiting for your approval.')
+  setStatus('A consumer app is waiting for your approval.')
 }
 
 function initialFor(name) {
@@ -301,8 +300,6 @@ createForm.addEventListener('submit', async (event) => {
     })
     inviteOutput.value = ''
     inviteOutputWrap.hidden = true
-    shareOutput.value = ''
-    shareOutputWrap.hidden = true
     setStatus('Identity created.')
     await refresh()
   } catch (error) {
@@ -322,8 +319,6 @@ linkForm.addEventListener('submit', async (event) => {
     })
     inviteOutput.value = ''
     inviteOutputWrap.hidden = true
-    shareOutput.value = ''
-    shareOutputWrap.hidden = true
     setStatus('Identity linked.')
     await refresh()
   } catch (error) {
@@ -396,49 +391,14 @@ inviteButton.addEventListener('click', async () => {
   }
 })
 
-shareButton.addEventListener('click', async () => {
-  try {
-    setStatus('Exporting share token…')
-    const result = await requestBackend('share_profile')
-    shareOutput.value = result.token ?? ''
-    shareOutputWrap.hidden = false
-    setStatus('Share token created.')
-  } catch (error) {
-    setStatus(String(error), true)
-  }
-})
-
 authApproveButton.addEventListener('click', async () => {
   if (!pendingAuthRequest) return
 
   try {
-    setStatus('Sharing profile with Bonk Docs…')
-    const result = await requestBackend('share_profile')
-    const response = await fetch(pendingAuthRequest.callbackUrl, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json'
-      },
-      body: JSON.stringify({
-        state: pendingAuthRequest.state,
-        token: result.token ?? ''
-      })
-    })
-
-    if (!response.ok) {
-      throw new Error(await response.text())
-    }
-
-    if (pendingAuthRequest.returnTo) {
-      try {
-        await invoke('open_external_url', { url: pendingAuthRequest.returnTo })
-      } catch (error) {
-        console.warn('[facebonk-renderer] failed to return to Bonk Docs', error)
-      }
-    }
-
+    setStatus('Approving connect request…')
+    await bridge.approveConnectRequest({ rawUrl: pendingAuthRequest.rawUrl })
     clearPendingAuthRequest()
-    setStatus('Profile shared with Bonk Docs.')
+    setStatus('Connect request approved.')
   } catch (error) {
     setStatus(String(error), true)
   }
@@ -446,7 +406,7 @@ authApproveButton.addEventListener('click', async () => {
 
 authRejectButton.addEventListener('click', () => {
   clearPendingAuthRequest()
-  setStatus('Canceled Bonk Docs auth request.')
+  setStatus('Canceled connect request.')
 })
 
 refreshButton.addEventListener('click', async () => {
@@ -461,8 +421,8 @@ refreshButton.addEventListener('click', async () => {
 
 window.addEventListener('DOMContentLoaded', async () => {
   try {
-    await listen('facebonk-auth-url', (event) => {
-      const url = event?.payload?.url ?? event?.payload
+    bridge.onFacebonkAuthUrl((payload) => {
+      const url = payload?.url ?? payload
       try {
         setPendingAuthRequest(url)
       } catch (error) {
@@ -472,7 +432,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     await loadAppInfo()
     await refresh()
-    const pendingUrl = await invoke('consume_pending_auth_url')
+    const pendingUrl = await bridge.consumePendingAuthUrl()
     if (pendingUrl) {
       setPendingAuthRequest(pendingUrl)
     }

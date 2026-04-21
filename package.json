@@ -1,8 +1,10 @@
 {
   "name": "facebonk",
+  "productName": "Facebonk",
   "version": "0.1.0",
   "description": "Peer-to-peer identity manager with shared core, CLI, and local desktop app",
   "type": "module",
+  "main": "electron/main.cjs",
   "private": true,
   "bin": {
     "facebonk": "./cli.js"
@@ -39,21 +41,19 @@
     }
   },
   "scripts": {
-    "dev": "tauri dev",
-    "build": "tauri build",
-    "tauri": "tauri",
+    "dev": "electron-forge start -- --no-updates",
+    "start": "npm run dev",
+    "package": "electron-forge package",
+    "make": "electron-forge make",
     "cli": "node cli.js",
-    "app:dev": "tauri dev",
-    "app:build": "tauri build",
+    "app:dev": "npm run dev",
+    "app:package": "npm run package",
+    "app:make": "npm run make",
     "postinstall": "npm install --prefix bare",
-    "sidecar:debug": "node scripts/prepare-sidecar.mjs --debug",
-    "sidecar:release": "node scripts/prepare-sidecar.mjs --release",
-    "check": "npm run sidecar:debug && cargo check --manifest-path tauri/Cargo.toml",
-    "app:check": "npm run sidecar:debug && cargo check --manifest-path tauri/Cargo.toml",
-    "fmt": "cargo fmt --manifest-path tauri/Cargo.toml",
+    "check": "npm test",
+    "app:check": "npm test",
     "schema:build": "node schema.js",
-    "test": "npm run schema:build && brittle --timeout 60000 test/*.test.js",
-    "start": "node cli.js"
+    "test": "npm run schema:build && brittle --timeout 60000 test/*.test.js"
   },
   "dependencies": {
     "autobonk": "file:../autobonk",
@@ -68,7 +68,13 @@
     "hyperschema": "^1.17.0"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.10.1",
-    "brittle": "^3.19.1"
+    "@electron-forge/cli": "^7.11.1",
+    "@electron-forge/maker-dmg": "^7.11.1",
+    "@electron-forge/maker-zip": "^7.11.1",
+    "@forkprince/electron-forge-maker-appimage": "^1.0.11",
+    "brittle": "^3.19.1",
+    "electron": "^41.2.0",
+    "electron-forge-plugin-prune-prebuilds": "^1.0.1",
+    "electron-forge-plugin-universal-prebuilds": "^1.0.0"
   }
 }

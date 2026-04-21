@@ -2,8 +2,9 @@ import { rm } from 'fs/promises'
 import test from 'brittle'
 import {
   IdentityManager,
-  profileSummaryFromCard,
-  verifyProfileCard
+  profileSummaryFromProfileDocument,
+  verifyConnectBundle,
+  verifyAssetBytes,
 } from '../core/index.js'
 import { createTempDir } from './helpers/temp-dir.js'
 
@@ -110,6 +111,32 @@ test('avatar bytes persist in the shared profile and can be read back', async (t
 
   const avatar = await identity.getAvatar()
   t.ok(avatar, 'avatar can be loaded')
+  t.is(avatar?.mimeType, 'image/png')
+  t.alike(avatar?.data, avatarBytes)
+})
+
+test('setProfile preserves avatar when only text fields change', async (t) => {
+  const { manager } = await createManager(t, 'facebonk-avatar-preserve-')
+
+  const identity = await manager.initIdentity({
+    displayName: 'Avatar Bonk'
+  })
+
+  const avatarBytes = Buffer.from('fake-png-avatar')
+  await identity.setAvatar(avatarBytes, {
+    mimeType: 'image/png'
+  })
+
+  const profile = await identity.setProfile({
+    displayName: 'Avatar Bonk Updated',
+    bio: 'Still has avatar'
+  })
+
+  t.ok(profile?.avatar, 'avatar pointer is preserved')
+  t.is(profile?.avatarMimeType, 'image/png')
+
+  const avatar = await identity.getAvatar()
+  t.ok(avatar, 'avatar still loads after text update')
   t.is(avatar?.mimeType, 'image/png')
   t.alike(avatar?.data, avatarBytes)
 })
@@ -233,8 +260,8 @@ test('revoking a linked device removes its write access', async (t) => {
   t.is(profile?.displayName, 'Revoker', 'linked device can no longer overwrite profile')
 })
 
-test('shareProfile returns a signed profile token with the current profile payload', async (t) => {
-  const { manager } = await createManager(t, 'facebonk-share-')
+test('createConnectBundle returns a small proof, signed profile document, and separate avatar asset', async (t) => {
+  const { manager } = await createManager(t, 'facebonk-connect-')
 
   const identity = await manager.initIdentity({
     displayName: 'Sharer',
@@ -243,13 +270,20 @@ test('shareProfile returns a signed profile token with the current profile paylo
   const avatarBytes = Buffer.from('share-avatar')
   await identity.setAvatar(avatarBytes, { mimeType: 'image/png' })
 
-  const token = await manager.shareProfile()
-  const card = await verifyProfileCard(token)
-  const summary = profileSummaryFromCard(card)
+  const bundle = await manager.createConnectBundle({
+    audience: 'consumer-app',
+    nonce: 'nonce-123'
+  })
+  const verified = await verifyConnectBundle(bundle, {
+    audience: 'consumer-app',
+    nonce: 'nonce-123'
+  })
+  const summary = profileSummaryFromProfileDocument(verified.profileDocument)
+  const avatarAsset = await manager.getAvatarAsset()
 
-  t.ok(token.startsWith('facebonk-profile:'), 'token uses Facebonk share prefix')
+  t.ok(bundle.proof.startsWith('facebonk-connect:'), 'proof uses connect prefix')
   t.is(summary.profile.displayName, 'Sharer')
   t.is(summary.profile.bio, 'Signed profile export')
-  t.is(summary.profile.avatarMimeType, 'image/png')
-  t.ok(summary.profile.avatarDataUrl?.startsWith('data:image/png;base64,'), 'avatar is embedded')
+  t.is(summary.profile.avatar?.mimeType, 'image/png')
+  t.ok(verifyAssetBytes(summary.profile.avatar, avatarAsset.data), 'avatar bytes match signed ref')
 })

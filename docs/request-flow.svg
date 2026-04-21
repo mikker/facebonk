@@ -57,9 +57,9 @@
   <rect x="30" y="30" width="91.74799999999999" height="40" rx="4" ry="4" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="1" />
   <text x="75.874" y="50" font-size="13" text-anchor="middle" font-weight="500" fill="var(--_text)" dy="4.55">Renderer</text>
 </g>
-<g class="actor" data-id="Host" data-label="Tauri host" data-type="participant">
+<g class="actor" data-id="Host" data-label="Electron main" data-type="participant">
   <rect x="168.8885" y="30" width="93.971" height="40" rx="4" ry="4" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="1" />
-  <text x="215.874" y="50" font-size="13" text-anchor="middle" font-weight="500" fill="var(--_text)" dy="4.55">Tauri host</text>
+  <text x="215.874" y="50" font-size="13" text-anchor="middle" font-weight="500" fill="var(--_text)" dy="4.55">Electron main</text>
 </g>
 <g class="actor" data-id="Bridge" data-label="Bare host" data-type="participant">
   <rect x="310.3705" y="30" width="91.007" height="40" rx="4" ry="4" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="1" />

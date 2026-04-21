@@ -1,4 +1,4 @@
 .facebonk
 node_modules
 tmp
-tauri/target
+out

@@ -1,164 +1,24 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Facebonk Architecture</title>
     <style>
-      :root {
-        color-scheme: light;
-        --bg: #ffffff;
-        --ink: #1f2937;
-        --muted: #6b7280;
-      }
-      * {
-        box-sizing: border-box;
-      }
-      body {
-        margin: 0;
-        font-family:
-          system-ui,
-          -apple-system,
-          BlinkMacSystemFont,
-          "Segoe UI",
-          sans-serif;
-        background: var(--bg);
-        color: var(--ink);
-        line-height: 1.6;
-      }
-      main {
-        max-width: 900px;
-        margin: 0 auto;
-        padding: 48px 24px 64px;
-      }
-      h1,
-      h2 {
-        margin: 0 0 12px;
-      }
-      h1 {
-        font-size: 2.5rem;
-      }
-      h2 {
-        margin-top: 32px;
-        font-size: 1.35rem;
-      }
-      p,
-      ul,
-      ol,
-      pre {
-        margin: 0 0 16px;
-      }
-      .lede {
-        color: var(--muted);
-        font-size: 1.08rem;
-      }
-      .diagram {
-        margin: 20px 0 24px;
-      }
-      .diagram img {
-        display: block;
-        width: 100%;
-        height: auto;
-      }
-      code {
-        font-family:
-          ui-monospace,
-          "SFMono-Regular",
-          Menlo,
-          Consolas,
-          monospace;
-      }
-      pre {
-        overflow: auto;
-        white-space: pre-wrap;
-        word-break: break-word;
-      }
+      body { font: 16px/1.5 system-ui, sans-serif; max-width: 780px; margin: 40px auto; padding: 0 20px; }
+      code { background: #f3f3f3; padding: 0.1em 0.3em; border-radius: 4px; }
     </style>
   </head>
   <body>
-    <main>
-      <h1>Facebonk Architecture</h1>
-      <p class="lede">
-        Facebonk is one shared identity model with two local steward surfaces: a CLI and a desktop
-        app. Both use the same core APIs and can link into the same identity.
-      </p>
-
-      <h2>Layers</h2>
-      <ul>
-        <li><code>core/</code> owns the Autobonk identity model.</li>
-        <li><code>cli/</code> is the terminal steward app.</li>
-        <li><code>tauri/</code> is the thin desktop shell.</li>
-        <li><code>bare/</code> is the local app backend.</li>
-        <li><code>renderer/</code> is the plain webview UI.</li>
-      </ul>
-
-      <h2>Desktop Runtime</h2>
-      <div class="diagram">
-        <img src="./architecture-overview.svg" alt="Facebonk desktop runtime diagram" />
-      </div>
-      <p>
-        The UI does not own keys. The local Bare host owns the real <code>IdentityManager</code>,
-        and peer-to-peer state stays on-device.
-      </p>
-
-      <h2>Request Flow</h2>
-      <div class="diagram">
-        <img src="./request-flow.svg" alt="Facebonk request flow diagram" />
-      </div>
-      <p>
-        The renderer calls Tauri commands, Rust forwards JSON RPC over a local Unix socket, and
-        the Bare host executes Facebonk operations directly in-process.
-      </p>
-      <p>
-        The same desktop shell also accepts <code>facebonk://auth</code> launch URLs from Bonk
-        Docs, queues them in Tauri, and hands them to the renderer for local approval.
-      </p>
-
-      <h2>Linking Model</h2>
-      <ol>
-        <li>Create the identity in the CLI or desktop app.</li>
-        <li>Keep that handler online.</li>
-        <li>Create a link invite.</li>
-        <li>Join from another local handler with its own storage root.</li>
-        <li>Both handlers now replicate and edit the same profile.</li>
-      </ol>
-
-      <h2>Shared Profile</h2>
-      <p>The shared profile stays intentionally small:</p>
-      <ul>
-        <li><code>displayName</code></li>
-        <li><code>bio</code></li>
-        <li><code>avatar</code></li>
-        <li><code>updatedAt</code></li>
-      </ul>
-      <p>
-        <code>profile share</code> exports a signed profile token for preview or import flows. It
-        is separate from the live replicated identity. For Bonk Docs desktop linking, that token is
-        now delivered over a loopback callback instead of being embedded in a launch URL.
-      </p>
-
-      <h2>Bonk Docs Desktop Auth</h2>
-      <ol>
-        <li>Bonk Docs opens <code>facebonk://auth?... </code> with a loopback callback URL.</li>
-        <li>The request only carries <code>client</code>, <code>state</code>, <code>callback</code>, and optional <code>return_to</code>.</li>
-        <li>Facebonk validates the request and shows a local approval screen.</li>
-        <li>On approval, Facebonk exports the signed profile token and <code>POST</code>s it back to the callback.</li>
-        <li>Bonk Docs links the returned token and can optionally be reopened through <code>bonk-docs://...</code>.</li>
-      </ol>
-      <p>
-        This keeps avatar bytes out of launch URLs while preserving the existing signed-token model.
-        For more detail, see <code>docs/bonkdocs-auth.md</code> in the repository.
-      </p>
-
-      <h2>Storage Rule</h2>
-      <p>
-        Each running handler needs its own local storage directory. Two handlers can control the
-        same identity at the same time, but they cannot both open the exact same local data dir.
-      </p>
-
-      <h2>Logging</h2>
-      <p>The desktop app backend logs startup, request lifecycle, and uncaught failures to the terminal.</p>
-      <pre><code>npm run dev -- -- -- --storage /tmp/facebonk-app</code></pre>
-    </main>
+    <h1>Facebonk Architecture</h1>
+    <p>This page is intentionally non-canonical.</p>
+    <p>The canonical design source is <a href="./fundamentals.md"><code>docs/fundamentals.md</code></a>.</p>
+    <p>At a high level the current app is:</p>
+    <ul>
+      <li><code>core/</code> — identity and connect primitives</li>
+      <li><code>bare/</code> — steward backend</li>
+      <li><code>electron/</code> — desktop shell</li>
+      <li><code>renderer/</code> — steward UI</li>
+    </ul>
   </body>
 </html>

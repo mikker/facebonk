@@ -1,88 +1,16 @@
 # Facebonk Architecture
 
-Facebonk is one identity model with two local steward surfaces:
+This file is intentionally non-canonical.
 
-- CLI for direct terminal control
-- desktop app for a local HTML management console
+For system rules and design constraints, see:
 
-Both use the same `core/` APIs and can link into the same shared identity.
+- [`fundamentals.md`](./fundamentals.md)
 
-## Layers
+At a high level, the current app is a local steward shell around the shared `core/` identity model:
 
-- `core/` owns the Autobonk identity model
-- `cli/` is the terminal steward
-- `tauri/` is the thin desktop shell
-- `bare/` is the local app backend
-- `renderer/` is the plain webview UI
+- `core/` owns identity and connect primitives
+- `bare/` hosts the steward backend
+- `electron/` is the desktop shell
+- `renderer/` is the steward UI
 
-## Desktop runtime
-
-![Facebonk app runtime](./architecture-overview.svg)
-
-The important boundary is:
-
-- the UI does not own keys
-- the Bare host owns the real `IdentityManager`
-- local storage and peer-to-peer state stay on-device
-
-## Request flow
-
-![Facebonk request flow](./request-flow.svg)
-
-The renderer calls Tauri commands, Rust forwards JSON RPC to the local Bare host, and the Bare host executes Facebonk operations directly in-process.
-
-That same desktop shell also handles `facebonk://auth` launch URLs for Bonk Docs. The deep link is queued in Tauri, emitted into the renderer, and the renderer completes the approval flow locally.
-
-## Linking model
-
-Facebonk identities are shared by linking devices or apps with invites.
-
-Typical flow:
-
-1. Create the identity in the CLI or desktop app.
-2. Keep that handler online.
-3. Create a link invite.
-4. Join from another local handler with its own storage root.
-5. Both handlers now replicate and edit the same profile.
-
-## Shared profile
-
-The shared profile is intentionally small:
-
-- `displayName`
-- `bio`
-- `avatar`
-- `updatedAt`
-
-`profile share` is separate from live replication. It exports a signed profile token for preview or import flows. For desktop app-to-app linking, that signed token is now delivered over a loopback callback instead of being stuffed into a launch URL.
-
-## Bonk Docs desktop auth
-
-Bonk Docs integration now uses a local auth handshake:
-
-1. Bonk Docs opens `facebonk://auth?...`.
-2. The URL only contains `client`, `state`, `callback`, and optional `return_to`.
-3. Facebonk validates the request and shows a local approval screen.
-4. On approval, Facebonk exports the signed profile token and `POST`s it to the loopback callback.
-5. Bonk Docs links the returned token and may be reopened through `bonk-docs://...`.
-
-This keeps avatar bytes and other profile payload out of launch URLs while preserving the existing signed-token model.
-
-See [bonkdocs-auth.md](./bonkdocs-auth.md).
-
-## Storage rule
-
-Each running handler needs its own local storage directory.
-
-Two handlers can control the same identity at the same time, but they cannot both open the exact same local data dir.
-
-## Logging
-
-The desktop app backend logs to the terminal:
-
-- startup paths
-- request lifecycle
-- request failures
-- uncaught exceptions and unhandled rejections
-
-That is the main debugging surface right now.
+Anything protocol-level should be derived from `fundamentals.md`, not invented here.

@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Facebonk Consumer Example</title>
+    <style>
+      :root { color-scheme: dark; }
+      body {
+        margin: 0;
+        font: 14px/1.5 ui-sans-serif, system-ui, sans-serif;
+        background: #0b0d10;
+        color: #f4f6f8;
+      }
+      main {
+        max-width: 680px;
+        margin: 48px auto;
+        padding: 0 20px;
+      }
+      .card {
+        background: #12161b;
+        border: 1px solid #222a33;
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,.2);
+      }
+      button, a.button {
+        appearance: none;
+        border: 0;
+        border-radius: 10px;
+        padding: 10px 14px;
+        background: #5b8cff;
+        color: white;
+        font: inherit;
+        text-decoration: none;
+        display: inline-block;
+        cursor: pointer;
+      }
+      a.button.secondary, button.secondary { background: #232c36; }
+      pre {
+        overflow: auto;
+        background: #0f1318;
+        border: 1px solid #222a33;
+        border-radius: 12px;
+        padding: 12px;
+      }
+      .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+      .muted { color: #97a4b2; }
+      img.avatar {
+        width: 72px;
+        height: 72px;
+        object-fit: cover;
+        border-radius: 999px;
+        border: 1px solid #222a33;
+      }
+    </style>
+    <script type="module" src="/app.js"></script>
+  </head>
+  <body>
+    <main>
+      <div class="card">
+        <h1>Facebonk Consumer Example</h1>
+        <p class="muted">Minimal custom consumer UI built around connect proofs, signed profile documents, and separate asset fetch.</p>
+        <div class="row">
+          <button id="start">Connect with Facebonk</button>
+          <a id="open-link" class="button secondary" hidden>Open Facebonk</a>
+        </div>
+        <p id="status" class="muted">Idle.</p>
+        <div id="profile" hidden>
+          <div class="row">
+            <img id="avatar" class="avatar" hidden alt="Avatar" />
+            <div>
+              <strong id="display-name"></strong>
+              <div id="bio" class="muted"></div>
+            </div>
+          </div>
+          <pre id="payload"></pre>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>

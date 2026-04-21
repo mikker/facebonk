@@ -15,13 +15,13 @@
       </header>
 
       <section id="auth-section" class="card" hidden>
-        <h3>Share with Bonk Docs</h3>
+        <h3>Approve connect request</h3>
         <p id="auth-description" class="card-description">
-          Bonk Docs is requesting your signed Facebonk profile.
+          Another app is requesting a signed Facebonk connect proof and profile document.
         </p>
         <dl class="meta-list">
           <dt>Client</dt>
-          <dd id="auth-client">bonk-docs</dd>
+          <dd id="auth-client">consumer-app</dd>
           <dt>Callback</dt>
           <dd><code id="auth-callback-url"></code></dd>
         </dl>
@@ -106,11 +106,10 @@
         <!-- Actions -->
         <div class="actions-row">
           <div class="card">
-            <h3>Share your identity</h3>
-            <p class="card-description">Create an invite to link another device, or export a share token for others.</p>
+            <h3>Link more stewards</h3>
+            <p class="card-description">Create a link invite for another device or app to join this identity as its own writer.</p>
             <div class="btn-group">
               <button id="invite-button" type="button" class="btn btn-secondary">Create invite</button>
-              <button id="share-button" type="button" class="btn btn-secondary">Export share token</button>
             </div>
             <div id="invite-output-wrap" class="output-wrap" hidden>
               <label>
@@ -118,13 +117,6 @@
                 <textarea id="invite-output" rows="4" readonly></textarea>
               </label>
               <button type="button" class="btn btn-small btn-ghost" data-copy="invite-output">Copy</button>
-            </div>
-            <div id="share-output-wrap" class="output-wrap" hidden>
-              <label>
-                Share token
-                <textarea id="share-output" rows="4" readonly></textarea>
-              </label>
-              <button type="button" class="btn btn-small btn-ghost" data-copy="share-output">Copy</button>
             </div>
           </div>
         </div>
@@ -151,7 +143,7 @@
 
       <button id="refresh-button" type="button" class="btn btn-ghost refresh-btn" title="Refresh">↻ Refresh</button>
 
-      <!-- Hidden host info (kept for JS compatibility) -->
+      <!-- Hidden host info -->
       <span id="storage-override" hidden></span>
       <span id="bridge" hidden></span>
       <span id="backend-transport" hidden></span>

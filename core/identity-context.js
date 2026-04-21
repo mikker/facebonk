@@ -67,13 +67,21 @@ async function readStreamFully(stream) {
   return Buffer.concat(chunks)
 }
 
-function copyProfileTextFields(profile, patch) {
-  if (profile?.displayName) {
+function copyProfileFields(profile, patch) {
+  if (!Object.prototype.hasOwnProperty.call(patch, 'displayName') && profile?.displayName) {
     patch.displayName = profile.displayName
   }
 
-  if (profile?.bio) {
+  if (!Object.prototype.hasOwnProperty.call(patch, 'bio') && profile?.bio) {
     patch.bio = profile.bio
+  }
+
+  if (!Object.prototype.hasOwnProperty.call(patch, 'avatar') && profile?.avatar) {
+    patch.avatar = profile.avatar
+  }
+
+  if (!Object.prototype.hasOwnProperty.call(patch, 'avatarMimeType') && profile?.avatarMimeType) {
+    patch.avatarMimeType = profile.avatarMimeType
   }
 
   return patch
@@ -222,6 +230,8 @@ export class IdentityContext extends Context {
   async setProfile(patch = {}) {
     await this.requireIdentityOwner(this.writerKey)
 
+    patch = copyProfileFields(await this.getProfile(), { ...patch })
+
     const payload = {
       updatedAt: typeof patch.updatedAt === 'number' ? patch.updatedAt : Date.now()
     }
@@ -271,7 +281,7 @@ export class IdentityContext extends Context {
     const pointer = await this.blobs.put(buffer)
     const current = await this.getProfile()
 
-    return await this.setProfile(copyProfileTextFields(current, {
+    return await this.setProfile(copyProfileFields(current, {
       updatedAt: typeof options.updatedAt === 'number' ? options.updatedAt : Date.now(),
       avatar: {
         key: Buffer.from(this.blobs.key),
@@ -287,7 +297,7 @@ export class IdentityContext extends Context {
   async clearAvatar(options = {}) {
     const current = await this.getProfile()
 
-    return await this.setProfile(copyProfileTextFields(current, {
+    return await this.setProfile(copyProfileFields(current, {
       updatedAt: typeof options.updatedAt === 'number' ? options.updatedAt : Date.now(),
       avatar: null
     }))
