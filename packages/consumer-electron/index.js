@@ -1,10 +1,10 @@
-import { createServer } from 'node:http'
-import { randomBytes } from 'node:crypto'
+import { createServer } from 'http'
+import { randomBytes } from 'crypto'
 
 import {
   createFacebonkAuthUrl,
   createFacebonkRefreshUrl
-} from '../core/index.js'
+} from '../protocol/index.js'
 import {
   connectFacebonkSession,
   profileFromFacebonkSession,
@@ -128,7 +128,7 @@ function defaultReturnToUrl() {
 async function defaultFetchAvatarBytes(avatarUrl) {
   const target = new URL(avatarUrl)
   const transport =
-    target.protocol === 'https:' ? await import('node:https') : await import('node:http')
+    target.protocol === 'https:' ? await import('https') : await import('http')
 
   return await new Promise((resolve, reject) => {
     const req = transport.request(target, (res) => {

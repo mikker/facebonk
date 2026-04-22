@@ -7,7 +7,7 @@ import {
   profileFromFacebonkSession,
   refreshFacebonkSession,
   restoreFacebonkSession
-} from '../consumer-core/index.js'
+} from '../packages/consumer-core/index.js'
 import { createTempDir } from './helpers/temp-dir.js'
 
 async function createManager(t, prefix) {

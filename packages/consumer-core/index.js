@@ -5,7 +5,7 @@ import {
   verifyConnectBundle,
   verifyConsumerGrant,
   verifyProfileDocument
-} from '../core/index.js'
+} from '../protocol/index.js'
 
 function normalizeText(value) {
   return typeof value === 'string' ? value.trim() : ''

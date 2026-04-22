@@ -1,14 +1,14 @@
-import { createServer } from 'node:http'
-import { readFile } from 'node:fs/promises'
-import { extname, join, dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { createServer } from 'http'
+import { readFile } from 'fs/promises'
+import { extname, join, dirname } from 'path'
+import { fileURLToPath } from 'url'
 
 import {
   createExampleAuthClient
 } from '../auth-client.mjs'
 import {
   createInMemoryFacebonkSessionStore
-} from '../../consumer-core/index.js'
+} from '../../packages/consumer-core/index.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const sessions = new Map()

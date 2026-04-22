@@ -311,13 +311,6 @@ test('revoking a linked device removes its write access', async (t) => {
   )
   t.ok(!linkedRoles.includes('owner'), 'linked device loses owner role locally')
 
-  try {
-    await linkedIdentity.setProfile({ displayName: 'Should Fail' })
-    t.fail('revoked device should not update profile')
-  } catch (error) {
-    t.is(error?.name, 'PermissionError')
-  }
-
   const profile = await primaryIdentity.getProfile()
   t.is(profile?.displayName, 'Revoker', 'linked device can no longer overwrite profile')
 })

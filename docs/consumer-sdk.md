@@ -5,8 +5,9 @@ profile without becoming identity writers.
 
 ## Packages
 
-- `facebonk/consumer-core`
-- `facebonk/consumer-electron`
+- `@facebonk/protocol`
+- `@facebonk/consumer-core`
+- `@facebonk/consumer-electron`
 
 Use `consumer-electron` for desktop apps. It builds on `consumer-core`.
 
@@ -15,7 +16,7 @@ Use `consumer-electron` for desktop apps. It builds on `consumer-core`.
 ```js
 import {
   createFacebonkClient
-} from 'facebonk/consumer-electron'
+} from '@facebonk/consumer-electron'
 
 const storage = {
   value: null,
@@ -111,7 +112,7 @@ Refresh is explicit pull. There is no subscription or watch API yet.
 
 If you need lower-level control over the loopback callback transport, use:
 
-- `createFacebonkAuthSession()` from `facebonk/consumer-electron`
+- `createFacebonkAuthSession()` from `@facebonk/consumer-electron`
 
 That helper gives you:
 

@@ -7,7 +7,7 @@ Bonk Docs integrates with Facebonk through two explicit local flows:
 
 Both use custom URL launch plus a short-lived loopback callback. Neither puts avatar bytes or full profile payloads into the launch URL.
 
-Bonk Docs uses the low-level helper exported from `facebonk/consumer-electron`
+Bonk Docs uses the low-level helper exported from `@facebonk/consumer-electron`
 for this desktop transport, while still keeping its own app-local worker storage
 and UI state.
 

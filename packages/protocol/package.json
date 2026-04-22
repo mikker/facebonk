@@ -1,0 +1,18 @@
+{
+  "name": "@facebonk/protocol",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "imports": {
+    "crypto": {
+      "bare": "bare-crypto",
+      "default": "crypto"
+    }
+  },
+  "dependencies": {
+    "bare-crypto": "^1.13.4"
+  }
+}

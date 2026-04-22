@@ -1,9 +1,9 @@
-import { pathToFileURL } from 'node:url'
+import { pathToFileURL } from 'url'
 
 import {
   createFacebonkClient
-} from '../consumer-electron/index.js'
-import { createInMemoryFacebonkSessionStore } from '../consumer-core/index.js'
+} from '../packages/consumer-electron/index.js'
+import { createInMemoryFacebonkSessionStore } from '../packages/consumer-core/index.js'
 
 const DEFAULT_CLIENT = 'facebonk-example'
 const DEFAULT_HOST = '127.0.0.1'

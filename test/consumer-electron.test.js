@@ -8,10 +8,10 @@ import {
 } from '../core/index.js'
 import {
   createFacebonkClient
-} from '../consumer-electron/index.js'
+} from '../packages/consumer-electron/index.js'
 import {
   createInMemoryFacebonkSessionStore
-} from '../consumer-core/index.js'
+} from '../packages/consumer-core/index.js'
 import { createTempDir } from './helpers/temp-dir.js'
 
 async function createManager(t, prefix) {

@@ -18,9 +18,10 @@ If code or older docs disagree with that file, `fundamentals.md` wins.
 
 ## Current repo shape
 
-- `core/` — identity model, connect proof/profile document/grant logic
-- `consumer-core/` — verified session normalization, refresh application, avatar cache helpers
-- `consumer-electron/` — loopback callback transport plus high-level Electron consumer client
+- `core/` — identity steward model and manager built on Autobonk
+- `packages/protocol/` — signed auth URL, proof, grant, and profile document helpers
+- `packages/consumer-core/` — verified session normalization, refresh application, avatar cache helpers
+- `packages/consumer-electron/` — loopback callback transport plus high-level Electron consumer client
 - `cli/` — terminal steward
 - `bare/` — local backend used by the desktop steward
 - `electron/` — desktop shell
@@ -42,8 +43,9 @@ If code or older docs disagree with that file, `fundamentals.md` wins.
 
 Facebonk now exposes two consumer-facing entrypoints:
 
-- `facebonk/consumer-core`
-- `facebonk/consumer-electron`
+- `@facebonk/protocol`
+- `@facebonk/consumer-core`
+- `@facebonk/consumer-electron`
 
 Start with [`docs/consumer-sdk.md`](./docs/consumer-sdk.md) for the app developer
 surface.

@@ -1,10 +1,10 @@
 import test from 'brittle'
-import { spawn } from 'node:child_process'
-import { once } from 'node:events'
-import { createRequire } from 'node:module'
-import { resolve } from 'node:path'
+import { spawn } from 'child_process'
+import { once } from 'events'
+import { createRequire } from 'module'
+import { resolve } from 'path'
 
-import { createFacebonkAuthSession } from '../consumer-electron/index.js'
+import { createFacebonkAuthSession } from '../packages/consumer-electron/index.js'
 import { verifyConnectBundle } from '../core/index.js'
 import { createTempDir } from './helpers/temp-dir.js'
 

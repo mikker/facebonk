@@ -12,9 +12,7 @@
   "exports": {
     ".": "./core/index.js",
     "./core": "./core/index.js",
-    "./cli": "./cli/index.js",
-    "./consumer-core": "./consumer-core/index.js",
-    "./consumer-electron": "./consumer-electron/index.js"
+    "./cli": "./cli/index.js"
   },
   "imports": {
     "crypto": {
@@ -24,10 +22,6 @@
     "fs/promises": {
       "bare": "bare-fs/promises",
       "default": "fs/promises"
-    },
-    "node:crypto": {
-      "bare": "bare-crypto",
-      "default": "node:crypto"
     },
     "path": {
       "bare": "bare-path",
@@ -58,6 +52,7 @@
     "test": "npm run schema:build && brittle --timeout 60000 test/*.test.js"
   },
   "dependencies": {
+    "@facebonk/protocol": "file:packages/protocol",
     "autobonk": "file:../autobonk",
     "bare-crypto": "^1.13.4",
     "bare-fs": "^4.5.5",

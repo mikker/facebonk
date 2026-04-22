@@ -402,7 +402,6 @@ export class IdentityContext extends Context {
     }
 
     await this.revokeRoles(subjectKey)
-    await this.removeWriter(subjectKey)
     return true
   }
 

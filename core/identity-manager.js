@@ -10,7 +10,7 @@ import {
   createProfileSignerRecord,
   verifyConsumerGrant,
   restoreProfileSigner
-} from './connect.js'
+} from '@facebonk/protocol'
 import { facebonkSchema } from './generated-schema.js'
 
 const ACTIVE_IDENTITY_KEY = 'app/active-identity'

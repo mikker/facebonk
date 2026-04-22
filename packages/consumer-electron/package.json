@@ -1,0 +1,13 @@
+{
+  "name": "@facebonk/consumer-electron",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "dependencies": {
+    "@facebonk/consumer-core": "file:../consumer-core",
+    "@facebonk/protocol": "file:../protocol"
+  }
+}

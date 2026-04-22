@@ -12,7 +12,7 @@ These examples are built around the current Facebonk model:
 Minimal consumer-side loopback auth client.
 
 It:
-- uses `createFacebonkClient()` from `facebonk/consumer-electron`
+- uses `createFacebonkClient()` from `@facebonk/consumer-electron`
 - stores the verified session in an in-memory store
 - receives a signed connect proof + consumer grant + signed profile document
 - fetches avatar bytes separately when needed
