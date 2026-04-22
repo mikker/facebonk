@@ -272,8 +272,45 @@ async function autoApproveAuthUrl(url) {
 async function approveConnectRequest(request) {
   await ensureTestIdentity()
 
-  const { parseFacebonkAuthUrl } = await import(path.join(projectRoot, 'core', 'auth-link.js'))
-  const auth = parseFacebonkAuthUrl(request?.rawUrl || request?.url || '')
+  const {
+    parseFacebonkAuthUrl,
+    parseFacebonkRefreshUrl,
+  } = await import(path.join(projectRoot, 'core', 'auth-link.js'))
+  const rawUrl = request?.rawUrl || request?.url || ''
+
+  if (rawUrl.startsWith('facebonk://refresh')) {
+    const refresh = parseFacebonkRefreshUrl(rawUrl)
+    const result = await backendRequest('refresh_consumer_profile', {
+      audience: refresh.client || 'unknown-consumer',
+      grant: refresh.grant,
+      knownProfileDocumentHash: refresh.knownProfileDocumentHash,
+    })
+
+    const assetTransport = await createAssetTransport(result?.avatarAsset)
+
+    try {
+      await postJson(refresh.callbackUrl, {
+        state: refresh.state,
+        changed: Boolean(result?.changed),
+        profileDocument: result?.profileDocument ?? null,
+        avatarUrl: assetTransport?.avatarUrl ?? null,
+      })
+    } finally {
+      if (assetTransport) {
+        setTimeout(() => {
+          void assetTransport.close()
+        }, 5000)
+      }
+    }
+
+    if (refresh.returnTo) {
+      await openExternalUrl(refresh.returnTo)
+    }
+
+    return { approved: true, changed: Boolean(result?.changed) }
+  }
+
+  const auth = parseFacebonkAuthUrl(rawUrl)
   const bundle = await backendRequest('create_connect_bundle', {
     audience: auth.client || 'unknown-consumer',
     nonce: auth.state,
@@ -285,6 +322,7 @@ async function approveConnectRequest(request) {
     await postJson(auth.callbackUrl, {
       state: auth.state,
       proof: bundle?.proof ?? '',
+      grant: bundle?.grant ?? '',
       profileDocument: bundle?.profileDocument ?? null,
       avatarUrl: assetTransport?.avatarUrl ?? null,
     })

@@ -4,8 +4,8 @@ import { once } from 'node:events'
 import { createRequire } from 'node:module'
 import { resolve } from 'node:path'
 
+import { createFacebonkAuthSession } from '../consumer-electron/index.js'
 import { verifyConnectBundle } from '../core/index.js'
-import { createExampleAuthSession } from '../example/auth-client.mjs'
 import { createTempDir } from './helpers/temp-dir.js'
 
 const require = createRequire(import.meta.url)
@@ -80,7 +80,10 @@ test('example auth client completes the desktop auth flow end-to-end', async (t)
     }),
   }
 
-  const session = await createExampleAuthSession({ timeoutMs: 15000 })
+  const session = await createFacebonkAuthSession({
+    clientId: 'facebonk-example',
+    timeoutMs: 15000
+  })
   t.teardown(async () => {
     await session.close()
   })
@@ -101,14 +104,14 @@ test('example auth client completes the desktop auth flow end-to-end', async (t)
 
   await waitForOutput(app, 'manager ready')
 
-  const result = await session.waitForConnect()
+  const result = await session.waitForPayload()
   const verified = await verifyConnectBundle(
     {
       proof: result.proof,
       profileDocument: result.profileDocument,
     },
     {
-      audience: session.client,
+      audience: 'facebonk-example',
       nonce: session.state,
     }
   )

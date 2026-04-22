@@ -12,7 +12,9 @@
   "exports": {
     ".": "./core/index.js",
     "./core": "./core/index.js",
-    "./cli": "./cli/index.js"
+    "./cli": "./cli/index.js",
+    "./consumer-core": "./consumer-core/index.js",
+    "./consumer-electron": "./consumer-electron/index.js"
   },
   "imports": {
     "crypto": {

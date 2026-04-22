@@ -276,6 +276,14 @@ async function handleFacebonkRequest(method, params) {
     }
   }
 
+  if (method === 'refresh_consumer_profile') {
+    return await manager.refreshConsumerProfile({
+      audience: params.audience,
+      grant: params.grant,
+      knownProfileDocumentHash: params.knownProfileDocumentHash,
+    })
+  }
+
   if (method === 'revoke_device') {
     const identity = await requireIdentity(manager)
     const writerKey = String(params.writerKey || '').trim()
@@ -326,6 +334,16 @@ function summarizeParams(method, params) {
     }
   }
 
+  if (method === 'refresh_consumer_profile') {
+    return {
+      audience: params.audience ?? null,
+      grantLength: typeof params.grant === 'string' ? params.grant.length : 0,
+      hasKnownProfileDocumentHash:
+        typeof params.knownProfileDocumentHash === 'string' &&
+        params.knownProfileDocumentHash.length > 0,
+    }
+  }
+
   return null
 }
 
@@ -345,6 +363,15 @@ function summarizeResult(method, result) {
   if (method === 'create_connect_bundle') {
     return {
       proofLength: typeof result?.proof === 'string' ? result.proof.length : 0,
+      grantLength: typeof result?.grant === 'string' ? result.grant.length : 0,
+      hasAvatarAsset: Boolean(result?.avatarAsset?.asset),
+    }
+  }
+
+  if (method === 'refresh_consumer_profile') {
+    return {
+      changed: Boolean(result?.changed),
+      profileDocumentHash: result?.profileDocumentHash ?? null,
       hasAvatarAsset: Boolean(result?.avatarAsset?.asset),
     }
   }

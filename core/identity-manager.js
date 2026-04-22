@@ -3,8 +3,12 @@ import { IdentityContext } from './identity-context.js'
 import {
   createAssetRef,
   createConnectBundle,
+  createConsumerGrant as createSignedConsumerGrant,
+  encodeConsumerGrant,
+  hashProfileDocument,
   createProfileDocument,
   createProfileSignerRecord,
+  verifyConsumerGrant,
   restoreProfileSigner
 } from './connect.js'
 import { facebonkSchema } from './generated-schema.js'
@@ -123,32 +127,24 @@ export class IdentityManager extends Manager {
   }
 
   async createProfileDocument() {
-    const identity = await this.initIdentity()
     const signer = await this.getProfileSigner()
-    const profile = (await identity.getProfile()) ?? {}
-    const avatar = await identity.getAvatar()
+    const snapshot = await this.getProfileSnapshot()
 
     return await createProfileDocument(
       {
-        displayName: profile.displayName ?? '',
-        bio: profile.bio ?? '',
-        avatar:
-          avatar?.data && avatar.data.length > 0
-            ? createAssetRef(avatar.data, {
-                mimeType: avatar.mimeType || 'application/octet-stream'
-              })
-            : null,
-        updatedAt: profile.updatedAt ?? Date.now()
+        displayName: snapshot.profile.displayName,
+        bio: snapshot.profile.bio,
+        avatar: snapshot.profile.avatar,
+        updatedAt: snapshot.profile.updatedAt
       },
       signer
     )
   }
 
   async createConnectBundle(options = {}) {
-    const identity = await this.initIdentity()
     const signer = await this.getProfileSigner()
-    const profile = (await identity.getProfile()) ?? {}
-    const avatar = await identity.getAvatar()
+    const snapshot = await this.getProfileSnapshot()
+    const grant = await this.createConsumerGrant(options)
 
     return await createConnectBundle(
       {
@@ -156,20 +152,60 @@ export class IdentityManager extends Manager {
         nonce: options.nonce,
         issuedAt: options.issuedAt,
         expiresAt: options.expiresAt,
-        profile: {
-          displayName: profile.displayName ?? '',
-          bio: profile.bio ?? '',
-          avatar:
-            avatar?.data && avatar.data.length > 0
-              ? createAssetRef(avatar.data, {
-                  mimeType: avatar.mimeType || 'application/octet-stream'
-                })
-              : null,
-          updatedAt: profile.updatedAt ?? Date.now()
-        }
+        profile: snapshot.profile
+      },
+      signer
+    ).then((bundle) => ({
+      ...bundle,
+      grant,
+    }))
+  }
+
+  async createConsumerGrant(options = {}) {
+    const signer = await this.getProfileSigner()
+
+    const grant = await createSignedConsumerGrant(
+      {
+        audience: options.audience,
+        issuedAt: options.issuedAt,
+        expiresAt:
+          typeof options.expiresAt === 'number' && Number.isFinite(options.expiresAt)
+            ? options.expiresAt
+            : Date.now() + 7 * 24 * 60 * 60 * 1000
       },
       signer
     )
+
+    return encodeConsumerGrant(grant)
+  }
+
+  async refreshConsumerProfile(options = {}) {
+    const grant = await verifyConsumerGrant(options.grant, {
+      audience: options.audience
+    })
+    const profileDocument = await this.createProfileDocument()
+    const profileDocumentHash = hashProfileDocument(profileDocument)
+
+    if (
+      typeof options.knownProfileDocumentHash === 'string' &&
+      options.knownProfileDocumentHash.trim().toLowerCase() === profileDocumentHash
+    ) {
+      return {
+        changed: false,
+        profileKey: grant.payload.profileKey,
+        profileDocumentHash,
+        expiresAt: grant.payload.expiresAt
+      }
+    }
+
+    return {
+      changed: true,
+      profileKey: grant.payload.profileKey,
+      profileDocumentHash,
+      expiresAt: grant.payload.expiresAt,
+      profileDocument,
+      avatarAsset: await this.getAvatarAsset()
+    }
   }
 
   async getAvatarAsset() {
@@ -185,6 +221,27 @@ export class IdentityManager extends Manager {
       asset: createAssetRef(avatar.data, {
         mimeType: avatar.mimeType || 'application/octet-stream'
       })
+    }
+  }
+
+  async getProfileSnapshot() {
+    const identity = await this.initIdentity()
+    const profile = (await identity.getProfile()) ?? {}
+    const avatar = await identity.getAvatar()
+
+    return {
+      profile: {
+        displayName: profile.displayName ?? '',
+        bio: profile.bio ?? '',
+        avatar:
+          avatar?.data && avatar.data.length > 0
+            ? createAssetRef(avatar.data, {
+                mimeType: avatar.mimeType || 'application/octet-stream'
+              })
+            : null,
+        updatedAt: profile.updatedAt ?? Date.now()
+      },
+      avatar
     }
   }
 }

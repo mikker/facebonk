@@ -2,8 +2,10 @@ import { rm } from 'fs/promises'
 import test from 'brittle'
 import {
   IdentityManager,
+  hashProfileDocument,
   profileSummaryFromProfileDocument,
   verifyConnectBundle,
+  verifyConsumerGrant,
   verifyAssetBytes,
 } from '../core/index.js'
 import { createTempDir } from './helpers/temp-dir.js'
@@ -210,6 +212,66 @@ test('link invite joins a second device onto the same identity', async (t) => {
     (avatar) => avatar?.mimeType === 'image/png'
   )
   t.alike(replicatedAvatar?.data, Buffer.from('linked-avatar-b'))
+})
+
+test('connect bundles include a reusable consumer grant', async (t) => {
+  const { manager } = await createManager(t, 'facebonk-consumer-grant-')
+
+  await manager.initIdentity({
+    displayName: 'Grant Bonk',
+    bio: 'Reusable auth grant'
+  })
+
+  const bundle = await manager.createConnectBundle({
+    audience: 'bonk-docs-test',
+    nonce: 'grant-test'
+  })
+
+  const verifiedGrant = await verifyConsumerGrant(bundle.grant, {
+    audience: 'bonk-docs-test'
+  })
+
+  t.ok(bundle.grant.startsWith('facebonk-grant:'), 'grant token returned')
+  t.is(verifiedGrant.payload.profileKey.length, 64)
+  t.is(verifiedGrant.payload.audience, 'bonk-docs-test')
+})
+
+test('refreshConsumerProfile returns unchanged when hashes match and profile when they do not', async (t) => {
+  const { manager } = await createManager(t, 'facebonk-refresh-profile-')
+
+  await manager.initIdentity({
+    displayName: 'Refresh Bonk',
+    bio: 'Before refresh'
+  })
+
+  const bundle = await manager.createConnectBundle({
+    audience: 'bonk-docs-test',
+    nonce: 'refresh-test'
+  })
+
+  const unchanged = await manager.refreshConsumerProfile({
+    audience: 'bonk-docs-test',
+    grant: bundle.grant,
+    knownProfileDocumentHash: '0'.repeat(64)
+  })
+
+  t.is(unchanged.changed, true, 'incorrect hash forces a refresh payload')
+
+  const changed = await manager.refreshConsumerProfile({
+    audience: 'bonk-docs-test',
+    grant: bundle.grant
+  })
+
+  t.is(changed.changed, true, 'refresh returns a profile payload')
+  t.is(changed.profileDocument?.payload?.displayName, 'Refresh Bonk')
+
+  const stable = await manager.refreshConsumerProfile({
+    audience: 'bonk-docs-test',
+    grant: bundle.grant,
+    knownProfileDocumentHash: hashProfileDocument(changed.profileDocument)
+  })
+
+  t.is(stable.changed, false, 'matching hash reports unchanged')
 })
 
 test('revoking a linked device removes its write access', async (t) => {

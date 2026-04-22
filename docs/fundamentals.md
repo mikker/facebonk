@@ -136,6 +136,10 @@ Properties:
 - should be small and transportable
 - must verify cryptographically
 
+In practice this usually means:
+- an initial connect/auth step that returns a small proof plus a signed profile document
+- an optional renewable capability or grant that lets the consumer explicitly refresh that signed profile document later
+
 These must stay conceptually separate even if a UI presents both as "connect".
 
 ## Required properties of a connect/auth protocol
@@ -149,6 +153,12 @@ A viable connect protocol must provide:
 5. **profile integrity** — which profile snapshot/ref is being authorized?
 6. **asset integrity** — if avatar or blobs are fetched separately, their hashes must be verifiable
 7. **transport independence** — can travel over local IPC, QR, relay, swarm, or manual handoff
+
+If the protocol supports refresh after the initial connect, that refresh path should:
+
+1. use a capability or grant bound to the original audience
+2. return either "unchanged" or a new signed profile document
+3. keep full payload transfer out of the launch URL
 
 ## Required properties of a profile representation
 
@@ -260,6 +270,7 @@ The repository should be kept aligned with these rules.
 
 In particular:
 - connect/auth artifacts stay small
+- explicit refresh should be pull-based by default
 - profile documents are signed separately
 - assets are fetched separately by signed reference
 - local transports are adapters, not the trust model

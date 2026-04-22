@@ -3,6 +3,7 @@
 These examples are built around the current Facebonk model:
 
 - small signed connect proofs
+- reusable consumer grants for explicit refresh
 - separately signed profile documents
 - large assets fetched separately by signed reference
 
@@ -11,11 +12,11 @@ These examples are built around the current Facebonk model:
 Minimal consumer-side loopback auth client.
 
 It:
-- starts a short-lived callback server
-- creates a `facebonk://auth?...` request URL
-- receives a signed connect proof + signed profile document
+- uses `createFacebonkClient()` from `facebonk/consumer-electron`
+- stores the verified session in an in-memory store
+- receives a signed connect proof + consumer grant + signed profile document
 - fetches avatar bytes separately when needed
-- verifies the whole bundle locally
+- returns a normalized verified profile object
 
 Run it:
 

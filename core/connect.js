@@ -3,6 +3,7 @@ import { createHash, webcrypto } from 'crypto'
 const { subtle } = webcrypto
 
 export const CONNECT_PROOF_PREFIX = 'facebonk-connect:'
+export const CONSUMER_GRANT_PREFIX = 'facebonk-grant:'
 export const CONNECT_VERSION = 1
 
 function normalizeText(value) {
@@ -111,6 +112,10 @@ function profileDocumentPayloadBytes(payload) {
 
 function connectProofPayloadBytes(payload) {
   return Buffer.from(JSON.stringify(canonicalConnectProofPayload(payload)))
+}
+
+function consumerGrantPayloadBytes(payload) {
+  return Buffer.from(JSON.stringify(canonicalConsumerGrantPayload(payload)))
 }
 
 async function importPublicKey(profileKey) {
@@ -222,6 +227,22 @@ export function canonicalConnectProofPayload(input = {}) {
   }
 }
 
+export function canonicalConsumerGrantPayload(input = {}) {
+  const profileKey = normalizeText(input.profileKey).toLowerCase()
+  assertHexKey(profileKey)
+
+  const issuedAt = normalizeUpdatedAt(input.issuedAt)
+
+  return {
+    type: 'facebonk-consumer-grant',
+    version: CONNECT_VERSION,
+    profileKey,
+    audience: normalizeAudience(input.audience),
+    issuedAt,
+    expiresAt: normalizeExpiry(input.expiresAt, issuedAt),
+  }
+}
+
 export async function createConnectProof(options, signer) {
   const payload = canonicalConnectProofPayload({
     ...options,
@@ -234,6 +255,18 @@ export async function createConnectProof(options, signer) {
   }
 }
 
+export async function createConsumerGrant(options, signer) {
+  const payload = canonicalConsumerGrantPayload({
+    ...options,
+    profileKey: signer.profileKey,
+  })
+
+  return {
+    payload,
+    signature: await signPayload(consumerGrantPayloadBytes(payload), signer),
+  }
+}
+
 export function encodeConnectProof(proof) {
   const payload = canonicalConnectProofPayload(proof?.payload)
   const signature = normalizeText(proof?.signature)
@@ -242,6 +275,18 @@ export function encodeConnectProof(proof) {
   }
 
   return `${CONNECT_PROOF_PREFIX}${toBase64Url(
+    Buffer.from(JSON.stringify({ payload, signature }))
+  )}`
+}
+
+export function encodeConsumerGrant(grant) {
+  const payload = canonicalConsumerGrantPayload(grant?.payload)
+  const signature = normalizeText(grant?.signature)
+  if (!signature) {
+    throw new Error('Consumer grant is missing a signature')
+  }
+
+  return `${CONSUMER_GRANT_PREFIX}${toBase64Url(
     Buffer.from(JSON.stringify({ payload, signature }))
   )}`
 }
@@ -262,6 +307,28 @@ export function decodeConnectProof(token) {
 
   return {
     payload: canonicalConnectProofPayload(parsed?.payload),
+    signature: normalizeText(parsed?.signature),
+  }
+}
+
+export function decodeConsumerGrant(token) {
+  const value = normalizeText(token)
+  if (!value) throw new Error('Consumer grant token is required')
+  if (!value.startsWith(CONSUMER_GRANT_PREFIX)) {
+    throw new Error('Not a Facebonk consumer grant token')
+  }
+
+  let parsed = null
+  try {
+    parsed = JSON.parse(
+      fromBase64Url(value.slice(CONSUMER_GRANT_PREFIX.length)).toString('utf8')
+    )
+  } catch {
+    throw new Error('Invalid Facebonk consumer grant token')
+  }
+
+  return {
+    payload: canonicalConsumerGrantPayload(parsed?.payload),
     signature: normalizeText(parsed?.signature),
   }
 }
@@ -294,6 +361,39 @@ export async function verifyConnectProof(input, options = {}) {
 
   if (payload.expiresAt < now) {
     throw new Error('Connect proof has expired')
+  }
+
+  return { payload, signature }
+}
+
+export async function verifyConsumerGrant(input, options = {}) {
+  const grant = typeof input === 'string' ? decodeConsumerGrant(input) : input ?? {}
+  const payload = canonicalConsumerGrantPayload(grant.payload)
+  const signature = normalizeText(grant.signature)
+  if (!signature) {
+    throw new Error('Consumer grant is missing a signature')
+  }
+
+  const ok = await verifyPayload(
+    consumerGrantPayloadBytes(payload),
+    signature,
+    payload.profileKey
+  )
+  if (!ok) {
+    throw new Error('Consumer grant signature could not be verified')
+  }
+
+  if (options.audience && payload.audience !== options.audience) {
+    throw new Error('Consumer grant audience did not match')
+  }
+
+  const now =
+    typeof options.now === 'number' && Number.isFinite(options.now)
+      ? Math.floor(options.now)
+      : Date.now()
+
+  if (payload.expiresAt < now) {
+    throw new Error('Consumer grant has expired')
   }
 
   return { payload, signature }

@@ -3,7 +3,12 @@ import { readFile } from 'node:fs/promises'
 import { extname, join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { createExampleAuthSession } from '../auth-client.mjs'
+import {
+  createExampleAuthClient
+} from '../auth-client.mjs'
+import {
+  createInMemoryFacebonkSessionStore
+} from '../../consumer-core/index.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const sessions = new Map()
@@ -28,38 +33,45 @@ async function serveStatic(res, name) {
 }
 
 async function startSession() {
-  const session = await createExampleAuthSession({
-    client: 'facebonk-consumer-example',
-    timeoutMs: 120000,
+  const storage = createInMemoryFacebonkSessionStore()
+  let resolveLaunch = null
+  const launchReady = new Promise((resolve) => {
+    resolveLaunch = resolve
   })
 
   const record = {
-    state: session.state,
-    launchUrl: session.launchUrl,
+    state: null,
+    launchUrl: null,
     status: 'pending',
-    token: null,
     profile: null,
     error: null,
-    close: session.close,
+    close: async () => {},
   }
 
-  sessions.set(session.state, record)
+  const client = await createExampleAuthClient({
+    clientId: 'facebonk-consumer-example',
+    appName: 'Facebonk Consumer Example',
+    timeoutMs: 120000,
+    storage,
+    openUrl(url) {
+      record.launchUrl = url
+      record.state = new URL(url).searchParams.get('state')
+      if (record.state) sessions.set(record.state, record)
+      resolveLaunch?.()
+    }
+  })
 
-  session.waitForConnect()
-    .then(async ({ proof, profileDocument, avatar }) => {
-      record.proof = proof
-      record.profileDocument = profileDocument
-      record.avatar = avatar
+  client.authenticate()
+    .then(async (session) => {
+      record.profile = await session.getProfile()
       record.status = 'done'
     })
     .catch((error) => {
       record.error = error instanceof Error ? error.message : String(error)
       record.status = 'error'
     })
-    .finally(async () => {
-      await session.close().catch(() => {})
-    })
 
+  await launchReady
   return record
 }
 
@@ -102,12 +114,12 @@ const server = createServer(async (req, res) => {
         status: session.status,
         error: session.error,
         launchUrl: session.launchUrl,
-        profile: session.profileDocument?.payload ?? null,
-        avatar: session.avatar
+        profile: session.profile,
+        avatar: session.profile?.avatarUrl
           ? {
-              mimeType: session.avatar.mimeType,
-              byteLength: session.avatar.byteLength,
-              dataUrl: `data:${session.avatar.mimeType || 'application/octet-stream'};base64,${session.avatar.data.toString('base64')}`,
+              mimeType: 'image/*',
+              byteLength: null,
+              dataUrl: session.profile.avatarUrl,
             }
           : null,
       })
